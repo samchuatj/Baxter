@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
