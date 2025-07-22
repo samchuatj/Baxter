@@ -69,10 +69,16 @@ async function setupWebhook() {
   }
 }
 
-// Set up webhook and start
-setupWebhook();
-
-console.log('✅ Telegram bot webhook service ready!');
+// Set up webhook and keep the process alive
+setupWebhook().then(() => {
+  console.log('✅ Telegram bot webhook service ready!');
+  console.log('🔄 Keeping process alive for Render...');
+  
+  // Keep the process alive with periodic logging
+  setInterval(() => {
+    console.log('💓 Bot service heartbeat...');
+  }, 30000); // Log every 30 seconds
+});
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
