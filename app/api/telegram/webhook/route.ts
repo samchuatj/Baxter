@@ -1,18 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { TelegramBotService } from '@/lib/telegram-bot'
-
-// Singleton instance of the bot service in webhook mode
-const botService = new TelegramBotService({ webhookMode: true })
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
-  try {
-    console.log("Webhook endpoint hit!");
-    const update = await req.json()
-    // Pass the update to the bot for processing
-    await botService.handleWebhookUpdate(update)
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    console.error('Error handling Telegram webhook:', error)
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 })
+  console.log("Webhook endpoint hit!");
+  const body = await req.json();
+
+  if (body.message && body.message.chat && body.message.chat.id) {
+    const chatId = body.message.chat.id;
+    try {
+      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: "Hello from your production bot!",
+        }),
+      });
+      console.log(`Sent reply to chat_id: ${chatId}`);
+    } catch (err) {
+      console.error('Error sending reply to Telegram:', err);
+    }
   }
+
+  return NextResponse.json({ ok: true });
 } 
