@@ -61,7 +61,10 @@ const createSupabaseClient = () => {
 }
 
 // Initialize the bot with your token
-const bot = new TelegramBot(botToken, { polling: true })
+// Helper to create bot instance with or without polling
+function createBotInstance(options: { polling?: boolean } = {}) {
+  return new TelegramBot(botToken as string, options)
+}
 
 export interface TelegramUser {
   id: number
@@ -73,10 +76,14 @@ export interface TelegramUser {
 export class TelegramBotService {
   private bot: TelegramBot
   private processingMessages: Set<string> = new Set()
+  private isWebhookMode: boolean
 
-  constructor() {
-    this.bot = bot
-    this.setupHandlers()
+  constructor({ webhookMode = false }: { webhookMode?: boolean } = {}) {
+    this.isWebhookMode = webhookMode
+    this.bot = createBotInstance({ polling: !webhookMode })
+    if (!webhookMode) {
+      this.setupHandlers()
+    }
   }
 
   private setupHandlers() {
@@ -478,6 +485,16 @@ If you don't have a Baxter account yet, you can create one by visiting: ${proces
     } catch (error) {
       console.error('Error sending message to Telegram user:', error)
       return false
+    }
+  }
+
+  // For webhook mode, process a single update
+  public async handleWebhookUpdate(update: any) {
+    // node-telegram-bot-api provides a 'processUpdate' method for this
+    if (typeof this.bot.processUpdate === 'function') {
+      await this.bot.processUpdate(update)
+    } else {
+      throw new Error('Bot does not support processUpdate')
     }
   }
 
