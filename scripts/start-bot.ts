@@ -2,8 +2,22 @@ import { TelegramBotService } from '../lib/telegram-bot'
 
 console.log('🤖 Starting Telegram bot in webhook mode...')
 
+// Log environment variables (without exposing secrets)
+console.log('🔍 Environment check:')
+console.log('- NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL ? 'Set' : 'Missing')
+console.log('- TELEGRAM_BOT_TOKEN:', process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Missing')
+console.log('- OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Set' : 'Missing')
+console.log('- NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing')
+
 // Create bot instance in webhook mode
-const bot = new TelegramBotService({ webhookMode: true })
+let bot: TelegramBotService
+try {
+  bot = new TelegramBotService({ webhookMode: true })
+  console.log('✅ Bot instance created successfully')
+} catch (error) {
+  console.error('❌ Failed to create bot instance:', error)
+  process.exit(1)
+}
 
 // Set webhook URL (replace with your actual production URL)
 const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/webhook`
@@ -11,6 +25,8 @@ const botToken = process.env.TELEGRAM_BOT_TOKEN
 
 if (!webhookUrl || !botToken) {
   console.error('❌ Missing required environment variables for webhook setup')
+  console.error('- webhookUrl:', webhookUrl)
+  console.error('- botToken:', botToken ? 'Set' : 'Missing')
   process.exit(1)
 }
 
@@ -28,6 +44,12 @@ async function setupWebhook() {
         allowed_updates: ['message', 'callback_query']
       })
     })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ HTTP error setting webhook:', response.status, errorText)
+      throw new Error(`HTTP ${response.status}: ${errorText}`)
+    }
 
     const result = await response.json()
     
