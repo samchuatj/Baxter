@@ -9,6 +9,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { signIn } from "@/lib/actions"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { FcGoogle } from "react-icons/fc"
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -34,6 +36,7 @@ function SubmitButton() {
 export default function LoginForm() {
   const router = useRouter()
   const [state, formAction] = useActionState(signIn, null)
+  const supabase = createClientComponentClient()
 
   // Handle successful login by redirecting
   useEffect(() => {
@@ -42,11 +45,37 @@ export default function LoginForm() {
     }
   }, [state, router])
 
+  // Handler for Google sign-in
+  const handleGoogleSignIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    })
+  }
+
   return (
     <div className="w-full max-w-md space-y-8">
       <div className="space-y-2 text-center">
         <h1 className="text-4xl font-semibold tracking-tight text-white">Welcome back</h1>
         <p className="text-lg text-gray-400">Sign in to your account</p>
+      </div>
+
+      {/* Google Sign-In Button at the top */}
+      <Button
+        type="button"
+        onClick={handleGoogleSignIn}
+        className="w-full bg-white text-black border border-gray-300 hover:bg-gray-100 flex items-center justify-center gap-2 mb-6"
+      >
+        <FcGoogle className="w-5 h-5" />
+        Sign in with Google
+      </Button>
+
+      <div className="flex items-center my-4">
+        <div className="flex-grow border-t border-gray-700" />
+        <span className="mx-2 text-gray-400">or</span>
+        <div className="flex-grow border-t border-gray-700" />
       </div>
 
       <form action={formAction} className="space-y-6">

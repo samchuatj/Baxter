@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
 import Link from "next/link"
 import { signUp } from "@/lib/actions"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { FcGoogle } from "react-icons/fc"
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -32,12 +34,39 @@ function SubmitButton() {
 export default function SignUpForm() {
   // Initialize with null as the initial state
   const [state, formAction] = useActionState(signUp, null)
+  const supabase = createClientComponentClient()
+
+  // Handler for Google sign-up
+  const handleGoogleSignUp = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    })
+  }
 
   return (
     <div className="w-full max-w-md space-y-8">
       <div className="space-y-2 text-center">
         <h1 className="text-4xl font-semibold tracking-tight text-white">Create an account</h1>
         <p className="text-lg text-gray-400">Sign up to get started</p>
+      </div>
+
+      {/* Google Sign-Up Button at the top */}
+      <Button
+        type="button"
+        onClick={handleGoogleSignUp}
+        className="w-full bg-white text-black border border-gray-300 hover:bg-gray-100 flex items-center justify-center gap-2 mb-6"
+      >
+        <FcGoogle className="w-5 h-5" />
+        Sign up with Google
+      </Button>
+
+      <div className="flex items-center my-4">
+        <div className="flex-grow border-t border-gray-700" />
+        <span className="mx-2 text-gray-400">or</span>
+        <div className="flex-grow border-t border-gray-700" />
       </div>
 
       <form action={formAction} className="space-y-6">
