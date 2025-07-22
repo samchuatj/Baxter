@@ -511,7 +511,4 @@ If you don't have a Baxter account yet, you can create one by visiting: ${proces
     this.bot.stopPolling()
     console.log('🤖 Telegram bot stopped')
   }
-}
-
-// Export singleton instance
-export const telegramBot = new TelegramBotService() 
+} 
