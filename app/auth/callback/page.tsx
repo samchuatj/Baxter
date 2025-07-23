@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, Suspense } from 'react'
+import { useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Loader2 } from 'lucide-react'
@@ -9,6 +9,7 @@ function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
+  const hasExchangedCode = useRef(false)
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -18,8 +19,9 @@ function AuthCallbackContent() {
         // Check if we have an OAuth code
         const code = searchParams.get('code')
         
-        if (code) {
+        if (code && !hasExchangedCode.current) {
           console.log('🔍 Auth callback page - OAuth code present, exchanging for session')
+          hasExchangedCode.current = true
           
           // Exchange the code for a session
           const { data, error } = await supabase.auth.exchangeCodeForSession(code)
@@ -27,7 +29,11 @@ function AuthCallbackContent() {
           console.log('🔍 Auth callback page - Session exchange result:', { 
             success: !error, 
             error: error?.message,
-            hasSession: !!data.session
+            hasSession: !!data.session,
+            sessionData: data.session ? {
+              userId: data.session.user.id,
+              email: data.session.user.email
+            } : null
           })
 
           if (error) {
@@ -37,6 +43,10 @@ function AuthCallbackContent() {
           }
           
           console.log('✅ Auth callback page - Session exchange successful')
+        } else if (hasExchangedCode.current) {
+          console.log('🔍 Auth callback page - Code already exchanged, skipping')
+        } else {
+          console.log('🔍 Auth callback page - No OAuth code present')
         }
         
         // Get the next URL from session storage
