@@ -1,8 +1,10 @@
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
+"use client"
+
+import { isSupabaseConfigured } from "@/lib/supabase/server"
 import SignUpForm from "@/components/signup-form"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 export default function SignUpPage() {
   // If Supabase is not configured, show setup message directly
@@ -14,20 +16,23 @@ export default function SignUpPage() {
     )
   }
 
-  // Check if user is already logged in
-  const supabase = await createClient()
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  // If user is logged in, redirect to home page
-  if (session) {
-    redirect("/")
-  }
-
   const router = useRouter()
   const searchParams = useSearchParams()
   const [signedUp, setSignedUp] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const supabase = createClientComponentClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.replace("/")
+      } else {
+        setCheckingSession(false)
+      }
+    }
+    checkSession()
+  }, [router])
 
   useEffect(() => {
     if (signedUp) {
@@ -39,6 +44,10 @@ export default function SignUpPage() {
       }
     }
   }, [signedUp, router, searchParams])
+
+  if (checkingSession) {
+    return null
+  }
 
   // Pass a callback to SignUpForm to set signedUp to true on success
   return (
