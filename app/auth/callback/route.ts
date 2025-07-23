@@ -41,5 +41,9 @@ export async function GET(request: NextRequest) {
 
   console.log('✅ Auth callback - Redirecting to home page')
   // URL to redirect to after sign in process completes
-  return NextResponse.redirect(new URL('/', request.url))
+  // Use environment variable or fallback to production URL
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
+  const redirectUrl = new URL('/', baseUrl)
+  console.log('🔍 Auth callback - Redirect URL:', redirectUrl.toString())
+  return NextResponse.redirect(redirectUrl)
 } 

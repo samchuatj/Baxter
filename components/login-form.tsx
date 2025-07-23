@@ -47,6 +47,8 @@ export default function LoginForm() {
 
   // Handler for Google sign-in
   const handleGoogleSignIn = async () => {
+    console.log('🔍 Google OAuth - Starting sign in process')
+    
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
