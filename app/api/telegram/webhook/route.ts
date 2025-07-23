@@ -9,6 +9,9 @@ export async function POST(req: NextRequest) {
     // Create bot instance in webhook mode
     const bot = new TelegramBotService({ webhookMode: true });
     
+    // Set up handlers for webhook mode
+    bot.setupWebhookHandlers();
+    
     // Handle the webhook update
     await bot.handleWebhookUpdate(body);
     

@@ -124,6 +124,11 @@ export class TelegramBotService {
     })
   }
 
+  // Public method to set up handlers for webhook mode
+  public setupWebhookHandlers() {
+    this.setupHandlers()
+  }
+
   private async handleStartCommand(chatId: number, telegramUser: TelegramUser) {
     try {
       if (!isSupabaseConfigured) {
