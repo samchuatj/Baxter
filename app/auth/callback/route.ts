@@ -23,19 +23,34 @@ export async function GET(request: NextRequest) {
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     
     try {
+      console.log('🔍 Auth callback - About to exchange code for session')
       // Exchange the code for a session
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)
       
       console.log('🔍 Auth callback - Session exchange result:', { 
         success: !error, 
         error: error?.message,
-        hasSession: !!data.session
+        hasSession: !!data.session,
+        sessionData: data.session ? {
+          userId: data.session.user.id,
+          email: data.session.user.email,
+          expiresAt: data.session.expires_at
+        } : null
       })
 
       if (error) {
         console.error('❌ Auth callback - Session exchange failed:', error)
         return NextResponse.redirect(new URL('/auth/login?error=auth_failed', request.url))
       }
+
+      // Check if session was actually created
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('🔍 Auth callback - Session after exchange:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        email: session?.user?.email
+      })
+
     } catch (error) {
       console.error('❌ Auth callback - Unexpected error:', error)
       return NextResponse.redirect(new URL('/auth/login?error=unexpected', request.url))

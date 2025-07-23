@@ -2,8 +2,9 @@ import { updateSession } from "@/lib/supabase/middleware"
 import type { NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  // Skip authentication for Telegram API routes
-  if (request.nextUrl.pathname.startsWith('/api/telegram/')) {
+  // Skip authentication for Telegram API routes and auth callback
+  if (request.nextUrl.pathname.startsWith('/api/telegram/') || 
+      request.nextUrl.pathname === '/auth/callback') {
     return
   }
   
