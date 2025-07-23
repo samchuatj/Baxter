@@ -1,18 +1,43 @@
 "use client"
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Loader2 } from 'lucide-react'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
         console.log('🔍 Auth callback page - Starting callback handling')
+        
+        // Check if we have an OAuth code
+        const code = searchParams.get('code')
+        
+        if (code) {
+          console.log('🔍 Auth callback page - OAuth code present, exchanging for session')
+          
+          // Exchange the code for a session
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          
+          console.log('🔍 Auth callback page - Session exchange result:', { 
+            success: !error, 
+            error: error?.message,
+            hasSession: !!data.session
+          })
+
+          if (error) {
+            console.error('❌ Auth callback page - Session exchange failed:', error)
+            router.replace('/auth/login?error=auth_failed')
+            return
+          }
+          
+          console.log('✅ Auth callback page - Session exchange successful')
+        }
         
         // Get the next URL from session storage
         const nextUrl = sessionStorage.getItem('oauth_next_url')
@@ -58,7 +83,7 @@ export default function AuthCallbackPage() {
     }
 
     handleCallback()
-  }, [router, supabase.auth])
+  }, [router, supabase.auth, searchParams])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#161616]">
