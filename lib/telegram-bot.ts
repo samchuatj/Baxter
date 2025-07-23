@@ -187,9 +187,7 @@ To link your Telegram account to your Baxter account, please click the magic lin
 
 ${magicLink}
 
-⚠️ Important: This link will expire in 10 minutes for security reasons.
-
-If you don't have a Baxter account yet, you can create one by visiting: ${process.env.NEXT_PUBLIC_APP_URL}/auth/sign-up`
+⚠️ Important: This link will expire in 10 minutes for security reasons. You can sign in or sign up after clicking the link.`
       )
 
     } catch (error) {

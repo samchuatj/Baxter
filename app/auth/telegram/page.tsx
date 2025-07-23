@@ -28,10 +28,11 @@ function TelegramAuthContent() {
 
         // Check if user is authenticated
         const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
+
         if (userError || !user) {
-          setStatus('error')
-          setMessage('You must be logged in to link your Telegram account. Please sign in first.')
+          // Redirect to login with next param
+          const nextUrl = `/auth/telegram?token=${encodeURIComponent(token)}&telegram_id=${encodeURIComponent(telegramId)}`
+          router.replace(`/auth/login?next=${encodeURIComponent(nextUrl)}`)
           return
         }
 

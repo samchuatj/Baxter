@@ -9,6 +9,7 @@ import Link from "next/link"
 import { signUp } from "@/lib/actions"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { FcGoogle } from "react-icons/fc"
+import { useEffect } from "react"
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -31,7 +32,7 @@ function SubmitButton() {
   )
 }
 
-export default function SignUpForm() {
+export default function SignUpForm({ onSuccess }: { onSuccess?: () => void }) {
   // Initialize with null as the initial state
   const [state, formAction] = useActionState(signUp, null)
   const supabase = createClientComponentClient()
@@ -45,6 +46,12 @@ export default function SignUpForm() {
       },
     })
   }
+
+  useEffect(() => {
+    if (state?.success && onSuccess) {
+      onSuccess()
+    }
+  }, [state, onSuccess])
 
   return (
     <div className="w-full max-w-md space-y-8">

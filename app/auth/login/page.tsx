@@ -1,8 +1,11 @@
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
-import LoginForm from "@/components/login-form"
+"use client"
 
-export default async function LoginPage() {
+import { isSupabaseConfigured } from "@/lib/supabase/server"
+import LoginForm from "@/components/login-form"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
+
+export default function LoginPage() {
   // If Supabase is not configured, show setup message directly
   if (!isSupabaseConfigured) {
     return (
@@ -12,20 +15,24 @@ export default async function LoginPage() {
     )
   }
 
-  // Check if user is already logged in
-  const supabase = await createClient()
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [loginSuccess, setLoginSuccess] = useState(false)
 
-  // If user is logged in, redirect to home page
-  if (session) {
-    redirect("/")
-  }
+  useEffect(() => {
+    if (loginSuccess) {
+      const next = searchParams.get('next')
+      if (next) {
+        router.push(next)
+      } else {
+        router.push("/")
+      }
+    }
+  }, [loginSuccess, router, searchParams])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#161616] px-4 py-12 sm:px-6 lg:px-8">
-      <LoginForm />
+      <LoginForm onSuccess={() => setLoginSuccess(true)} />
     </div>
   )
 }

@@ -33,17 +33,20 @@ function SubmitButton() {
   )
 }
 
-export default function LoginForm() {
+export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const router = useRouter()
   const [state, formAction] = useActionState(signIn, null)
   const supabase = createClientComponentClient()
 
-  // Handle successful login by redirecting
   useEffect(() => {
     if (state?.success) {
-      router.push("/")
+      if (onSuccess) {
+        onSuccess()
+      } else {
+        router.push("/")
+      }
     }
-  }, [state, router])
+  }, [state, router, onSuccess])
 
   // Handler for Google sign-in
   const handleGoogleSignIn = async () => {

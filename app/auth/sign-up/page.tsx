@@ -1,8 +1,10 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import SignUpForm from "@/components/signup-form"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
 
-export default async function SignUpPage() {
+export default function SignUpPage() {
   // If Supabase is not configured, show setup message directly
   if (!isSupabaseConfigured) {
     return (
@@ -23,9 +25,25 @@ export default async function SignUpPage() {
     redirect("/")
   }
 
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [signedUp, setSignedUp] = useState(false)
+
+  useEffect(() => {
+    if (signedUp) {
+      const next = searchParams.get('next')
+      if (next) {
+        router.push(next)
+      } else {
+        router.push("/")
+      }
+    }
+  }, [signedUp, router, searchParams])
+
+  // Pass a callback to SignUpForm to set signedUp to true on success
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#161616] px-4 py-12 sm:px-6 lg:px-8">
-      <SignUpForm />
+      <SignUpForm onSuccess={() => setSignedUp(true)} />
     </div>
   )
 }
