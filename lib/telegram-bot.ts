@@ -179,6 +179,7 @@ export class TelegramBotService {
       // Clean up old pending auth requests
       await this.cleanupPendingAuth()
 
+      console.log('DEBUG: Sending single-link /start message (latest code)')
       await this.bot.sendMessage(
         chatId,
         `🔐 Welcome to Baxter Expense Manager!
