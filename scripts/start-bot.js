@@ -2,8 +2,8 @@ console.log('BOT STARTUP: Running start-bot.js (latest code)')
 // Load environment variables
 require('dotenv').config({ path: '.env.local' });
 
-// Import the TelegramBotService from TypeScript source
-const { TelegramBotService } = require('../lib/telegram-bot.ts');
+// Import the TelegramBotService from compiled JavaScript
+const { TelegramBotService } = require('../lib/telegram-bot.js');
 
 console.log('🤖 Starting Telegram bot in webhook mode...');
 
