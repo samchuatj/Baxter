@@ -57,12 +57,14 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
     const next = searchParams.get('next')
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
     
-    // Build the callback URL with next parameter if it exists
-    let callbackUrl = `${baseUrl}/auth/callback`
+    // Store the next parameter in session storage before OAuth
     if (next) {
-      callbackUrl += `?next=${encodeURIComponent(next)}`
+      sessionStorage.setItem('oauth_next_url', next)
+      console.log('🔍 Google OAuth - Stored next URL in session storage:', next)
     }
     
+    // Use simple callback URL without parameters
+    const callbackUrl = `${baseUrl}/auth/callback`
     console.log('🔍 Google OAuth - Callback URL:', callbackUrl)
     
     await supabase.auth.signInWithOAuth({
