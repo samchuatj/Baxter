@@ -182,7 +182,7 @@ export class TelegramBotService {
       console.log('DEBUG: Sending single-link /start message (latest code)')
       await this.bot.sendMessage(
         chatId,
-        `🔐 Welcome to Baxter Expense Manager!
+        `🔐 Welcome to Baxter Expense Manager! [TEST-UNIQUE-STRING-123]
 
 To link your Telegram account to your Baxter account, please click the magic link below:
 
