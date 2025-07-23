@@ -1,3 +1,4 @@
+console.log('BOT STARTUP: Running start-bot.js (latest code)')
 // Load environment variables
 require('dotenv').config({ path: '.env.local' });
 
