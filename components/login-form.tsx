@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 import { signIn } from "@/lib/actions"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
@@ -35,6 +35,7 @@ function SubmitButton() {
 
 export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [state, formAction] = useActionState(signIn, null)
   const supabase = createClientComponentClient()
 
@@ -52,10 +53,22 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const handleGoogleSignIn = async () => {
     console.log('🔍 Google OAuth - Starting sign in process')
     
+    // Get the next parameter from the URL
+    const next = searchParams.get('next')
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
+    
+    // Build the callback URL with next parameter if it exists
+    let callbackUrl = `${baseUrl}/auth/callback`
+    if (next) {
+      callbackUrl += `?next=${encodeURIComponent(next)}`
+    }
+    
+    console.log('🔍 Google OAuth - Callback URL:', callbackUrl)
+    
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "https://baxterai.onrender.com/auth/callback",
+        redirectTo: callbackUrl,
       },
     })
   }

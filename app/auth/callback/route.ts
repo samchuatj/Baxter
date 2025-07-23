@@ -5,10 +5,12 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const next = requestUrl.searchParams.get('next')
 
   console.log('🔍 Auth callback - Received request:', { 
     url: request.url, 
     code: code ? 'present' : 'missing',
+    next: next || 'not provided',
     searchParams: Object.fromEntries(requestUrl.searchParams.entries())
   })
 
@@ -39,11 +41,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/login?error=no_code', request.url))
   }
 
-  console.log('✅ Auth callback - Redirecting to home page')
-  // URL to redirect to after sign in process completes
-  // Use environment variable or fallback to production URL
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
-  const redirectUrl = new URL('/', baseUrl)
-  console.log('🔍 Auth callback - Redirect URL:', redirectUrl.toString())
+  // Determine redirect URL
+  let redirectUrl: string
+  if (next) {
+    // Use the next parameter if provided
+    redirectUrl = next
+    console.log('🔍 Auth callback - Redirecting to next parameter:', redirectUrl)
+  } else {
+    // Fallback to home page
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
+    redirectUrl = new URL('/', baseUrl).toString()
+    console.log('🔍 Auth callback - Redirecting to home page:', redirectUrl)
+  }
+
+  console.log('✅ Auth callback - Redirecting to:', redirectUrl)
   return NextResponse.redirect(redirectUrl)
 } 
