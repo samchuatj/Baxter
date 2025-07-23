@@ -46,19 +46,18 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void }) {
     const next = searchParams.get('next')
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
     
-    // Use the state parameter to pass the next URL (more reliable than callback URL)
-    const state = next ? encodeURIComponent(next) : ''
+    // Build the callback URL with next parameter if it exists
+    let callbackUrl = `${baseUrl}/auth/callback`
+    if (next) {
+      callbackUrl += `?next=${encodeURIComponent(next)}`
+    }
     
-    console.log('🔍 Google OAuth Signup - State parameter:', state)
-    console.log('🔍 Google OAuth Signup - Base callback URL:', `${baseUrl}/auth/callback`)
+    console.log('🔍 Google OAuth Signup - Callback URL:', callbackUrl)
     
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${baseUrl}/auth/callback`,
-        queryParams: {
-          state: state
-        }
+        redirectTo: callbackUrl,
       },
     })
   }

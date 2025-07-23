@@ -5,12 +5,12 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const state = requestUrl.searchParams.get('state')
+  const next = requestUrl.searchParams.get('next')
 
   console.log('🔍 Auth callback - Received request:', { 
     url: request.url, 
     code: code ? 'present' : 'missing',
-    state: state || 'not provided',
+    next: next || 'not provided',
     searchParams: Object.fromEntries(requestUrl.searchParams.entries()),
     env: {
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'NOT SET',
@@ -60,26 +60,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/login?error=no_code', request.url))
   }
 
-  // Determine redirect URL using state parameter (OAuth standard)
+  // Determine redirect URL using next parameter
   let redirectUrl: string
-  if (state) {
-    // Decode the state parameter to get the next URL
-    try {
-      const nextUrl = decodeURIComponent(state)
-      redirectUrl = nextUrl
-      console.log('🔍 Auth callback - Redirecting using state parameter:', redirectUrl)
-    } catch (error) {
-      console.error('❌ Auth callback - Error decoding state parameter:', error)
-      // Fallback to home page if state decoding fails
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
-      redirectUrl = new URL('/', baseUrl).toString()
-      console.log('🔍 Auth callback - Fallback to home page:', redirectUrl)
-    }
+  if (next) {
+    // Use the next parameter if provided
+    redirectUrl = next
+    console.log('🔍 Auth callback - Redirecting to next parameter:', redirectUrl)
   } else {
     // Fallback to home page
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
     redirectUrl = new URL('/', baseUrl).toString()
-    console.log('🔍 Auth callback - No state parameter, redirecting to home page:', redirectUrl)
+    console.log('🔍 Auth callback - No next parameter, redirecting to home page:', redirectUrl)
   }
 
   console.log('✅ Auth callback - Final redirect URL:', redirectUrl)
