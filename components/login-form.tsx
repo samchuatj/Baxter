@@ -63,7 +63,7 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
       console.log('🔍 Google OAuth - Stored next URL in session storage:', next)
     }
     
-    // Use simple callback URL without parameters
+    // Use the standard Supabase auth callback URL
     const callbackUrl = `${baseUrl}/auth/callback`
     console.log('🔍 Google OAuth - Callback URL:', callbackUrl)
     

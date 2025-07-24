@@ -9,7 +9,7 @@ function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
-  const hasExchangedCode = useRef(false)
+  const hasProcessed = useRef(false)
   const isProcessing = useRef(false)
 
   useEffect(() => {
@@ -25,7 +25,7 @@ function AuthCallbackContent() {
       try {
         console.log('🔍 Auth callback page - Starting callback handling')
         
-        // Check if we have an OAuth code
+        // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
         
@@ -36,60 +36,15 @@ function AuthCallbackContent() {
           return
         }
         
-        if (code && !hasExchangedCode.current) {
-          console.log('🔍 Auth callback page - OAuth code present, exchanging for session')
-          hasExchangedCode.current = true
+        // If we have a code, let Supabase handle the exchange automatically
+        if (code && !hasProcessed.current) {
+          console.log('🔍 Auth callback page - OAuth code present, letting Supabase handle exchange')
+          hasProcessed.current = true
           
-          // Exchange the code for a session with retry logic
-          let retryCount = 0
-          const maxRetries = 2
-          
-          while (retryCount < maxRetries) {
-            try {
-              const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-              
-              console.log('🔍 Auth callback page - Session exchange result:', { 
-                success: !exchangeError, 
-                error: exchangeError?.message,
-                hasSession: !!data.session,
-                retryCount
-              })
-
-              if (exchangeError) {
-                console.error('❌ Auth callback page - Session exchange failed:', exchangeError)
-                
-                // If it's a PKCE error, don't retry
-                if (exchangeError.message.includes('PKCE') || exchangeError.message.includes('invalid_grant')) {
-                  console.error('❌ Auth callback page - PKCE error, not retrying')
-                  router.replace('/auth/login?error=pkce_failed')
-                  return
-                }
-                
-                retryCount++
-                if (retryCount < maxRetries) {
-                  console.log(`🔍 Auth callback page - Retrying exchange (${retryCount}/${maxRetries})`)
-                  await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
-                  continue
-                } else {
-                  router.replace('/auth/login?error=auth_failed')
-                  return
-                }
-              }
-              
-              console.log('✅ Auth callback page - Session exchange successful')
-              break
-              
-            } catch (retryError) {
-              console.error('❌ Auth callback page - Exchange retry error:', retryError)
-              retryCount++
-              if (retryCount >= maxRetries) {
-                router.replace('/auth/login?error=exchange_failed')
-                return
-              }
-            }
-          }
-        } else if (hasExchangedCode.current) {
-          console.log('🔍 Auth callback page - Code already exchanged, skipping')
+          // Wait a bit for Supabase to process the code automatically
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } else if (hasProcessed.current) {
+          console.log('🔍 Auth callback page - Already processed, skipping')
         } else {
           console.log('🔍 Auth callback page - No OAuth code present')
         }

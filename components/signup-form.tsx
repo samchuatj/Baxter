@@ -41,20 +41,22 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void }) {
   const supabase = createClientComponentClient()
 
   // Handler for Google sign-up
-  const handleGoogleSignUp = async () => {
+  const handleGoogleSignIn = async () => {
+    console.log('🔍 Google OAuth - Starting sign in process')
+
     // Get the next parameter from the URL
     const next = searchParams.get('next')
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
-    
+
     // Store the next parameter in session storage before OAuth
     if (next) {
       sessionStorage.setItem('oauth_next_url', next)
-      console.log('🔍 Google OAuth Signup - Stored next URL in session storage:', next)
+      console.log('🔍 Google OAuth - Stored next URL in session storage:', next)
     }
     
-    // Use simple callback URL without parameters
+    // Use the standard Supabase auth callback URL
     const callbackUrl = `${baseUrl}/auth/callback`
-    console.log('🔍 Google OAuth Signup - Callback URL:', callbackUrl)
+    console.log('🔍 Google OAuth - Callback URL:', callbackUrl)
     
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -80,7 +82,7 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void }) {
       {/* Google Sign-Up Button at the top */}
       <Button
         type="button"
-        onClick={handleGoogleSignUp}
+        onClick={handleGoogleSignIn}
         className="w-full bg-white text-black border border-gray-300 hover:bg-gray-100 flex items-center justify-center gap-2 mb-6"
       >
         <FcGoogle className="w-5 h-5" />
