@@ -133,11 +133,11 @@ export async function POST(request: NextRequest) {
     let contextSummary = 'No expenses found.'
     
     if (userExpenses && userExpenses.length > 0) {
-      const totalSpent = userExpenses.reduce((sum, exp) => sum + exp.total_amount, 0)
+      const totalSpent = userExpenses.reduce((sum: any, exp: any) => sum + exp.total_amount, 0)
       const avgSpent = totalSpent / userExpenses.length
       
       // Group by business purpose for insights
-      const purposeTotals = userExpenses.reduce((acc, exp) => {
+      const purposeTotals = userExpenses.reduce((acc: any, exp: any) => {
         const purpose = exp.business_purpose || 'Uncategorized'
         acc[purpose] = (acc[purpose] || 0) + exp.total_amount
         return acc
@@ -150,12 +150,11 @@ export async function POST(request: NextRequest) {
 Total: $${totalSpent.toFixed(2)} | Average: $${avgSpent.toFixed(2)}
 
 ${contextScope === 'all' ? 'ALL TRANSACTIONS:' : 'RECENT TRANSACTIONS:'}
-${transactionsToShow.map(exp => 
+${transactionsToShow.map((exp: any) => 
   `${exp.date}: $${exp.total_amount} at ${exp.merchant_name}${exp.business_purpose ? ` (${exp.business_purpose})` : ''}`
 ).join('\n')}
 
-${Object.keys(purposeTotals).length > 1 ? `SPENDING BY CATEGORY:
-${Object.entries(purposeTotals).map(([purpose, total]) => 
+${Object.keys(purposeTotals).length > 1 ? `SPENDING BY CATEGORY:\n${Object.entries(purposeTotals).map(([purpose, total]: [string, any]) => 
   `${purpose}: $${total.toFixed(2)}`
 ).join('\n')}` : ''}`
     }
@@ -195,22 +194,18 @@ ${Object.entries(purposeTotals).map(([purpose, total]) =>
     }
 
     // --- Enhanced system prompt with full context and decision-making ---
-    const systemPrompt = `You are an intelligent expense management assistant with full access to the user's expense data.
+    const systemPrompt = `You are an intelligent expense management assistant for a Telegram bot. You can:
+- Receive messages (text or image) from the user
+- Create a new expense from a message or receipt image
+- Edit an existing expense if the user requests
+- Answer questions about expenses or provide summaries
 
 USER'S RECENT EXPENSES:
 ${contextSummary}
 
 AVAILABLE BUSINESS PURPOSE CATEGORIES: ${availableCategories}
 
-${pendingContext.length > 0 ? `PENDING ITEMS WAITING FOR CONFIRMATION:
-${pendingContext.join('\n')}` : ''}
-
-You can:
-1. CREATE new expenses from receipts or transaction descriptions
-2. SUMMARIZE expense patterns and insights
-3. ANSWER questions about spending habits
-4. PROVIDE financial advice and recommendations
-5. HELP with expense categorization and organization
+${pendingContext.length > 0 ? `PENDING ITEMS WAITING FOR CONFIRMATION:\n${pendingContext.join('\n')}` : ''}
 
 RESPONSE FORMATS:
 
@@ -222,6 +217,15 @@ For creating expenses (receipts/transactions):
   "date": "2024-07-19",
   "merchant": "Coffee Shop",
   "business_purpose": "Food"
+}
+\`\`\`
+
+For editing an expense:
+\`\`\`json
+{
+  "action": "edit",
+  "expense_id": "...",
+  "fields_to_update": { "amount": 20.00, "merchant": "New Name", ... }
 }
 \`\`\`
 
@@ -249,21 +253,7 @@ For questions or general responses:
 }
 \`\`\`
 
-Use your judgment to decide the best action:
-
-1. For receipts/transactions: Extract details and respond with "create" action to ask for confirmation
-2. For confirmations: If user says "yes", "confirm", "ok", "sure", "yep", "yeah", etc., respond with "confirm" action (even if no specific context is mentioned)
-3. For cancellations: If user says "no", "cancel", "stop", "nope", "nah", etc., respond with "cancel" action
-4. For business purpose requests: If user asks to add a new business purpose, respond with "add_business_purpose" action
-5. For questions: Provide detailed insights based on the data provided
-6. For "all transactions" requests: Include ALL the transactions shown in the context
-
-SMART CATEGORIZATION: When categorizing expenses, if the merchant/expense doesn't fit existing categories well, suggest a new business purpose using "add_business_purpose" action instead of forcing it into an existing category.
-
-IMPORTANT: When a user responds with "yes", "confirm", "ok", etc., check the pending items above:
-- If there's a PENDING BUSINESS PURPOSE, respond with "confirm_business_purpose" action
-- If there's a PENDING EXPENSE, respond with "confirm" action
-- If no pending items, ask what they want to confirm`
+Use your judgment to decide the best action. If the user wants to edit an expense, use the 'edit' action and specify the expense_id and fields to update. Always return a single JSON object describing the action to take.`
 
     let openaiPayload: any = {
       model: type === 'image' ? 'gpt-4o' : 'gpt-4o',
@@ -371,6 +361,28 @@ Reply with "yes" or "confirm" to create this expense, or "no" to cancel.`
             }
           } else {
             responseMessage = `❌ Invalid expense data. Please provide amount, date, and merchant.`
+          }
+          break
+
+        case 'edit':
+          // Handle editing an existing expense
+          if (extractedAction.expense_id && extractedAction.fields_to_update && Object.keys(extractedAction.fields_to_update).length > 0) {
+            // Update the specified expense
+            const { error: editError } = await supabase
+              .from('expenses')
+              .update(extractedAction.fields_to_update)
+              .eq('id', extractedAction.expense_id)
+              .eq('user_id', userId)
+
+            if (!editError) {
+              responseMessage = `✅ Expense updated successfully.`
+              console.log('✅ Message API Debug - Expense updated:', extractedAction)
+            } else {
+              responseMessage = `❌ Failed to update expense: ${editError.message}`
+              console.error('❌ Message API Debug - Error updating expense:', editError)
+            }
+          } else {
+            responseMessage = `❌ Invalid edit request. Please specify the expense_id and fields to update.`
           }
           break
 
