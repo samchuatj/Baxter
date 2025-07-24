@@ -249,6 +249,7 @@ ${magicLink}
       // Extract replied-to message text if present
       let repliedToMessage = null;
       if (msg.reply_to_message) {
+        console.log('DEBUG: reply_to_message object:', msg.reply_to_message);
         // Prefer text, but also handle captions (for images)
         repliedToMessage = msg.reply_to_message.text || msg.reply_to_message.caption || null;
       }
