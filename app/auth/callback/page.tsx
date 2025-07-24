@@ -34,6 +34,9 @@ function AuthCallbackContent() {
         // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
+        const state = searchParams.get('state')
+        
+        console.log('🔍 Auth callback page - URL parameters:', { code: !!code, error, state })
         
         // Handle OAuth errors
         if (error) {
@@ -47,17 +50,33 @@ function AuthCallbackContent() {
           console.log('🔍 Auth callback page - OAuth code present, letting Supabase handle exchange')
           hasProcessed.current = true
           
-          // Wait a bit for Supabase to process the code automatically
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          // Wait longer for Supabase to process the code automatically
+          console.log('🔍 Auth callback page - Waiting for Supabase to process code...')
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          console.log('🔍 Auth callback page - Finished waiting')
         } else if (hasProcessed.current) {
           console.log('🔍 Auth callback page - Already processed, skipping')
         } else {
           console.log('🔍 Auth callback page - No OAuth code present')
         }
         
-        // Get the next URL from session storage
-        const nextUrl = sessionStorage.getItem('oauth_next_url')
-        console.log('🔍 Auth callback page - Next URL from session storage:', nextUrl)
+        // Wait a bit more before checking session storage
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Get the next URL from session storage or state parameter
+        let nextUrl = sessionStorage.getItem('oauth_next_url')
+        
+        // If not in session storage, try state parameter
+        if (!nextUrl && state) {
+          try {
+            nextUrl = decodeURIComponent(state)
+            console.log('🔍 Auth callback page - Retrieved next URL from state parameter:', nextUrl)
+          } catch (error) {
+            console.error('❌ Auth callback page - Error decoding state parameter:', error)
+          }
+        }
+        
+        console.log('🔍 Auth callback page - Final next URL:', nextUrl)
         
         // Clear the session storage
         if (nextUrl) {

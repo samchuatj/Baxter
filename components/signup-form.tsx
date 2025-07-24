@@ -54,14 +54,20 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void }) {
       console.log('🔍 Google OAuth - Stored next URL in session storage:', next)
     }
     
-    // Use the standard Supabase auth callback URL
+    // Use the standard Supabase auth callback URL with state parameter
     const callbackUrl = `${baseUrl}/auth/callback`
+    const state = next ? encodeURIComponent(next) : ''
+    
     console.log('🔍 Google OAuth - Callback URL:', callbackUrl)
+    console.log('🔍 Google OAuth - State parameter:', state)
     
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: callbackUrl,
+        queryParams: {
+          state: state
+        }
       },
     })
   }
