@@ -271,15 +271,14 @@ ${magicLink}
         return
       }
 
-      // Forward text message to backend
-      console.log('📝 Bot Debug - Calling API:', `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/message`)
-      console.log('📝 Bot Debug - Request payload:', {
+      // Debug log for outgoing API payload
+      console.log('Bot Debug - Request payload:', {
         telegramId,
         userId: linkedUser.user_id,
         message: text,
         type: 'text',
         repliedToMessage
-      })
+      });
       
       const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/message`, {
         method: 'POST',
