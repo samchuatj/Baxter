@@ -60,7 +60,8 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
     console.log('🔍 Google OAuth - Debug info:', {
       next,
       baseUrl,
-      hasNext: !!next
+      hasNext: !!next,
+      locationOrigin: typeof window !== 'undefined' ? window.location.origin : 'server'
     })
     
     // Build the redirectTo URL with next parameter
@@ -71,6 +72,12 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
     } else {
       console.log('🔍 Google OAuth - RedirectTo (no next parameter):', redirectTo)
     }
+    
+    // Log the exact OAuth call
+    console.log('🔍 Google OAuth - About to call signInWithOAuth with:', {
+      provider: 'google',
+      redirectTo
+    })
     
     await supabase.auth.signInWithOAuth({
       provider: "google",

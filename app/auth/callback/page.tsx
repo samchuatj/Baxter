@@ -30,7 +30,8 @@ function AuthCallbackContent() {
         const error = searchParams.get('error')
         const next = searchParams.get('next')
         
-        // Debug: Log all search parameters
+        // Debug: Log all search parameters and URL info
+        console.log('🔍 Auth callback page - Full URL:', window.location.href)
         console.log('🔍 Auth callback page - All search parameters:', Object.fromEntries(searchParams.entries()))
         console.log('🔍 Auth callback page - URL parameters:', { 
           code: !!code, 
@@ -38,7 +39,8 @@ function AuthCallbackContent() {
           next,
           hasCode: !!code,
           hasError: !!error,
-          hasNext: !!next
+          hasNext: !!next,
+          nextValue: next
         })
         
         // Handle OAuth errors
