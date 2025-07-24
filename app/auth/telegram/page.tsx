@@ -17,8 +17,16 @@ function TelegramAuthContent() {
   useEffect(() => {
     const handleTelegramAuth = async () => {
       try {
-        const token = searchParams.get('token')
-        const telegramId = searchParams.get('telegram_id')
+        // First check if we have parameters in the URL
+        let token = searchParams.get('token')
+        let telegramId = searchParams.get('telegram_id')
+        
+        // If not in URL, check session storage (for users coming back after auth)
+        if (!token || !telegramId) {
+          token = sessionStorage.getItem('telegram_auth_token')
+          telegramId = sessionStorage.getItem('telegram_auth_id')
+          console.log('🔍 Telegram auth - Retrieved params from session storage:', { token: !!token, telegramId })
+        }
 
         if (!token || !telegramId) {
           setStatus('error')
@@ -30,11 +38,20 @@ function TelegramAuthContent() {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
 
         if (userError || !user) {
-          // Redirect to login with next param
-          const nextUrl = `/auth/telegram?token=${encodeURIComponent(token)}&telegram_id=${encodeURIComponent(telegramId)}`
-          router.replace(`/auth/login?next=${encodeURIComponent(nextUrl)}`)
+          // Store the Telegram auth parameters in session storage
+          sessionStorage.setItem('telegram_auth_token', token)
+          sessionStorage.setItem('telegram_auth_id', telegramId)
+          console.log('🔍 Telegram auth - Stored auth params in session storage')
+          
+          // Redirect to login with next param pointing to telegram auth
+          router.replace('/auth/login?next=/auth/telegram')
           return
         }
+
+        // Clear session storage since we're now authenticated
+        sessionStorage.removeItem('telegram_auth_token')
+        sessionStorage.removeItem('telegram_auth_id')
+        console.log('🔍 Telegram auth - Cleared session storage')
 
         // Call the API to link the Telegram user
         const response = await fetch('/api/telegram/link', {

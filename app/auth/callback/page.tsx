@@ -25,6 +25,12 @@ function AuthCallbackContent() {
       try {
         console.log('🔍 Auth callback page - Starting callback handling')
         
+        // Debug: Check all session storage items
+        console.log('🔍 Auth callback page - All session storage items:', {
+          oauth_next_url: sessionStorage.getItem('oauth_next_url'),
+          allKeys: Object.keys(sessionStorage)
+        })
+        
         // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
@@ -64,7 +70,9 @@ function AuthCallbackContent() {
         
         console.log('🔍 Auth callback page - User check:', {
           hasUser: !!user,
-          error: userError?.message
+          error: userError?.message,
+          userId: user?.id,
+          email: user?.email
         })
         
         if (userError || !user) {
