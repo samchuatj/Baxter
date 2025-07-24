@@ -247,9 +247,10 @@ ${magicLink}
       const text = msg.text!
 
       // Extract replied-to message text if present
-      let repliedToMessage = null
-      if (msg.reply_to_message && msg.reply_to_message.text) {
-        repliedToMessage = msg.reply_to_message.text
+      let repliedToMessage = null;
+      if (msg.reply_to_message) {
+        // Prefer text, but also handle captions (for images)
+        repliedToMessage = msg.reply_to_message.text || msg.reply_to_message.caption || null;
       }
 
       console.log('📝 Bot Debug - Received text message:', { telegramId, text, repliedToMessage })
