@@ -72,11 +72,9 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
       redirectTo: callbackUrl,
     }
     
-    // If we have a next parameter, pass it via state (Supabase's recommended way)
+    // If we have a next parameter, pass it via state (OAuth 2.0 standard)
     if (next) {
-      options.queryParams = {
-        state: next
-      }
+      options.state = next
       console.log('🔍 Google OAuth - Added state parameter:', next)
     }
     
