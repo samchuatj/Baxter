@@ -69,11 +69,23 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
       try {
         // Set cookie with next URL - expires in 10 minutes
         const expires = new Date(Date.now() + 10 * 60 * 1000).toUTCString()
-        document.cookie = `oauth_next_url=${encodeURIComponent(next)}; expires=${expires}; path=/; SameSite=Lax`
-        console.log('🔍 Google OAuth - Stored next URL in cookie:', next)
+        const cookieValue = `oauth_next_url=${encodeURIComponent(next)}; expires=${expires}; path=/; SameSite=Lax`
+        document.cookie = cookieValue
+        console.log('🔍 Google OAuth - Set cookie:', cookieValue)
+        
+        // Verify cookie was set
+        const allCookies = document.cookie
+        console.log('🔍 Google OAuth - All cookies after setting:', allCookies)
+        
+        // Check if our cookie is there
+        const cookieExists = allCookies.includes('oauth_next_url=')
+        console.log('🔍 Google OAuth - Cookie verification:', { cookieExists })
+        
       } catch (error) {
         console.error('❌ Google OAuth - Error setting cookie:', error)
       }
+    } else {
+      console.log('🔍 Google OAuth - No next parameter, skipping cookie')
     }
     
     // Use the standard callback URL (without query params since they get stripped)

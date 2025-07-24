@@ -106,10 +106,16 @@ function AuthCallbackContent() {
         const nextUrl = getCookie('oauth_next_url')
         console.log('🔍 Auth callback page - Next URL from cookie:', nextUrl)
         
+        // Debug cookie reading
+        console.log('🔍 Auth callback page - All cookies:', document.cookie)
+        console.log('🔍 Auth callback page - Cookie search for oauth_next_url:', document.cookie.includes('oauth_next_url'))
+        
         // Clear the cookie
         if (nextUrl) {
           clearCookie('oauth_next_url')
           console.log('🔍 Auth callback page - Cleared oauth_next_url cookie')
+        } else {
+          console.log('🔍 Auth callback page - No oauth_next_url cookie found to clear')
         }
         
         // Determine redirect URL
