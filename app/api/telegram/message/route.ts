@@ -353,6 +353,11 @@ Use your judgment to decide the best action. If the user wants to edit an expens
     let extractedAction = aiResponse ? extractJsonFromText(aiResponse) : null
     let responseMessage = aiResponse || processedMessage
 
+    // Helper to remove [id: ...] patterns
+    function stripExpenseIds(text: string): string {
+      return text.replace(/\[id: [^\]]+\]/g, '').replace(/```json[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').replace(/\n{2,}/g, '\n').trim()
+    }
+
     if (extractedAction && extractedAction.action) {
       console.log('🎯 Message API Debug - LLM action detected:', extractedAction.action)
 
@@ -564,24 +569,24 @@ Use your judgment to decide the best action. If the user wants to edit an expens
 
         case 'summary':
           // Handle summary requests
-          responseMessage = extractedAction.text ? `📝 ${extractedAction.text}` : 'Summary not available.'
+          responseMessage = extractedAction.text ? `📝 ${stripExpenseIds(extractedAction.text)}` : 'Summary not available.'
           console.log('📊 Message API Debug - Summary requested')
           break
 
         case 'reply':
           // Handle general replies
-          responseMessage = extractedAction.text ? `💬 ${extractedAction.text}` : aiResponse || 'I understand your message.'
+          responseMessage = extractedAction.text ? `💬 ${stripExpenseIds(extractedAction.text)}` : aiResponse || 'I understand your message.'
           console.log('💬 Message API Debug - General reply')
           break
 
         default:
           // Fallback to original response
-          responseMessage = aiResponse ? `💡 ${aiResponse}` : processedMessage
+          responseMessage = aiResponse ? `💡 ${stripExpenseIds(aiResponse)}` : processedMessage
           console.log('🔄 Message API Debug - Unknown action, using original response')
       }
     } else {
       // No structured action found, use the LLM response as-is
-      responseMessage = aiResponse || processedMessage
+      responseMessage = aiResponse ? `💬 ${stripExpenseIds(aiResponse)}` : processedMessage
       console.log('💭 Message API Debug - No structured action, using conversational response')
     }
 
