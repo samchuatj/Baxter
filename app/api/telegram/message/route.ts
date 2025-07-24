@@ -243,6 +243,7 @@ export async function POST(request: NextRequest) {
 - Edit an existing expense if the user requests
 - Send a receipt image or file to the user if requested (see below)
 - Answer questions about expenses or provide summaries
+- Manage business purposes (add, remove, list, view)
 
 ${chatLog ? `CHAT LOG (last 10 messages):\n${chatLog}\n` : ''}${repliedToMessage ? `USER'S REPLIED-TO MESSAGE:\n${repliedToMessage}\n` : ''}USER'S RECENT EXPENSES:
 ${contextSummary}
@@ -287,6 +288,21 @@ For adding new business purposes:
 }
 \`\`\`
 
+For listing business purposes:
+\`\`\`json
+{
+  "action": "list_business_purposes"
+}
+\`\`\`
+
+For removing business purposes (only custom ones, not default):
+\`\`\`json
+{
+  "action": "remove_business_purpose",
+  "purpose_name": "Office Supplies"
+}
+\`\`\`
+
 For summaries or insights:
 \`\`\`json
 {
@@ -303,7 +319,13 @@ For questions or general responses:
 }
 \`\`\`
 
-Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). If the user's message is a reply to a previous expense summary or confirmation, extract the relevant details (date, merchant, amount, etc.) from the replied-to message and use them in your filter for actions like send_receipt or edit. Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
+Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). If the user's message is a reply to a previous expense summary or confirmation, extract the relevant details (date, merchant, amount, etc.) from the replied-to message and use them in your filter for actions like send_receipt or edit. Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.
+
+For business purpose management:
+- If user asks to "add business purpose [name]" or "create category [name]", use add_business_purpose action
+- If user asks to "list business purposes", "show categories", or "what categories do I have", use list_business_purposes action  
+- If user asks to "remove business purpose [name]" or "delete category [name]", use remove_business_purpose action
+- If user asks about business purposes in general, use list_business_purposes to show them what they have`
 
     let openaiPayload: any = {
       model: type === 'image' ? 'gpt-4o' : 'gpt-4o',
@@ -621,6 +643,110 @@ Use your judgment to decide the best action. If the user wants to edit an expens
           } catch (err) {
             responseMessage = `❌ Error cancelling business purpose. 😢\nReason: ${err}`
             console.error('❌ Message API Debug - Exception cancelling business purpose:', err)
+          }
+          break
+
+        case 'list_business_purposes':
+          // Handle listing business purposes
+          try {
+            const { data: purposes, error: listError } = await supabase
+              .from('business_purposes')
+              .select('name, is_default')
+              .order('is_default', { ascending: false })
+              .order('name', { ascending: true })
+
+            if (!listError && purposes) {
+              const defaultPurposes = purposes.filter((p: any) => p.is_default)
+              const customPurposes = purposes.filter((p: any) => !p.is_default)
+              
+              let purposeList = '📋 *Your Business Purpose Categories:*\n\n'
+              
+              if (defaultPurposes.length > 0) {
+                purposeList += '👑 *Default Categories:*\n'
+                defaultPurposes.forEach((p: any) => {
+                  purposeList += `• ${p.name}\n`
+                })
+                purposeList += '\n'
+              }
+              
+              if (customPurposes.length > 0) {
+                purposeList += '👤 *Your Custom Categories:*\n'
+                customPurposes.forEach((p: any) => {
+                  purposeList += `• ${p.name}\n`
+                })
+              } else {
+                purposeList += '👤 *Your Custom Categories:*\nNone yet. Use "add business purpose [name]" to create one!'
+              }
+              
+              responseMessage = purposeList
+              console.log('📋 Message API Debug - Business purposes listed')
+            } else {
+              responseMessage = `❌ Error fetching business purposes. 😢\nReason: ${listError?.message || 'Unknown error'}`
+              console.error('❌ Message API Debug - Error listing business purposes:', listError)
+            }
+          } catch (err) {
+            responseMessage = `❌ Error listing business purposes. 😢\nReason: ${err}`
+            console.error('❌ Message API Debug - Exception listing business purposes:', err)
+          }
+          break
+
+        case 'remove_business_purpose':
+          // Handle removing business purposes (only custom ones)
+          if (extractedAction.purpose_name) {
+            try {
+              // First check if the purpose exists and is custom (not default)
+              const { data: purpose, error: findError } = await supabase
+                .from('business_purposes')
+                .select('id, name, is_default, created_by')
+                .eq('name', extractedAction.purpose_name)
+                .single()
+
+              if (findError || !purpose) {
+                responseMessage = `❌ Business purpose "${extractedAction.purpose_name}" not found. 📝`
+                break
+              }
+
+              if (purpose.is_default) {
+                responseMessage = `❌ Cannot remove default business purpose "${extractedAction.purpose_name}". Default categories cannot be deleted. 🛡️`
+                break
+              }
+
+              if (purpose.created_by !== userId) {
+                responseMessage = `❌ Cannot remove business purpose "${extractedAction.purpose_name}". You can only remove your own custom categories. 🔒`
+                break
+              }
+
+              // Check if any expenses are using this purpose
+              const { data: expensesUsingPurpose, error: checkError } = await supabase
+                .from('expenses')
+                .select('id')
+                .eq('business_purpose_id', purpose.id)
+                .limit(1)
+
+              if (!checkError && expensesUsingPurpose && expensesUsingPurpose.length > 0) {
+                responseMessage = `❌ Cannot remove "${extractedAction.purpose_name}" because it's being used by existing expenses. Please update those expenses first. 📊`
+                break
+              }
+
+              // Remove the business purpose
+              const { error: deleteError } = await supabase
+                .from('business_purposes')
+                .delete()
+                .eq('id', purpose.id)
+
+              if (!deleteError) {
+                responseMessage = `✅ Business purpose "${extractedAction.purpose_name}" removed successfully! 🗑️`
+                console.log('✅ Message API Debug - Business purpose removed:', purpose.name)
+              } else {
+                responseMessage = `❌ Failed to remove business purpose. 😢\nReason: ${deleteError.message}`
+                console.error('❌ Message API Debug - Error removing business purpose:', deleteError)
+              }
+            } catch (err) {
+              responseMessage = `❌ Error removing business purpose. 😢\nReason: ${err}`
+              console.error('❌ Message API Debug - Exception removing business purpose:', err)
+            }
+          } else {
+            responseMessage = `❌ Invalid remove request. Please specify the business purpose name. 📝`
           }
           break
 
