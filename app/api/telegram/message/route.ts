@@ -146,12 +146,13 @@ export async function POST(request: NextRequest) {
       // Show all transactions for "all" requests, otherwise show recent ones
       const transactionsToShow = contextScope === 'all' ? userExpenses : userExpenses.slice(0, 5)
       
+      // Include the expense UUID (id) in each transaction line
       contextSummary = `${contextScope.toUpperCase()} EXPENSES (${userExpenses.length} transactions):
 Total: $${totalSpent.toFixed(2)} | Average: $${avgSpent.toFixed(2)}
 
 ${contextScope === 'all' ? 'ALL TRANSACTIONS:' : 'RECENT TRANSACTIONS:'}
 ${transactionsToShow.map((exp: any) => 
-  `${exp.date}: $${exp.total_amount} at ${exp.merchant_name}${exp.business_purpose ? ` (${exp.business_purpose})` : ''}`
+  `${exp.date}: $${exp.total_amount} at ${exp.merchant_name}${exp.business_purpose ? ` (${exp.business_purpose})` : ''} [id: ${exp.id}]`
 ).join('\n')}
 
 ${Object.keys(purposeTotals).length > 1 ? `SPENDING BY CATEGORY:\n${Object.entries(purposeTotals).map(([purpose, total]: [string, any]) => 
@@ -229,7 +230,7 @@ For editing an expense:
 \`\`\`json
 {
   "action": "edit",
-  "expense_id": "...",
+  "expense_id": "...", // Always use the id field from the expense summary above
   "fields_to_update": { "amount": 20.00, "merchant": "New Name", ... }
 }
 \`\`\`
@@ -258,7 +259,7 @@ For questions or general responses:
 }
 \`\`\`
 
-Use your judgment to decide the best action. If the user wants to edit an expense, use the 'edit' action and specify the expense_id and fields to update. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
+Use your judgment to decide the best action. If the user wants to edit an expense, use the 'edit' action and specify the expense_id using the id field from the expense summary above. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
 
     let openaiPayload: any = {
       model: type === 'image' ? 'gpt-4o' : 'gpt-4o',
