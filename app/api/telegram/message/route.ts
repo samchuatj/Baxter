@@ -165,30 +165,37 @@ ${Object.keys(purposeTotals).length > 1 ? `SPENDING BY CATEGORY:\n${Object.entri
     })
 
     // --- Check for pending items ---
-    const { data: pendingExpense } = await supabase
-      .from('pending_expenses')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('telegram_id', telegramId)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    const { data: pendingBusinessPurpose } = await supabase
-      .from('pending_business_purposes')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('telegram_id', telegramId)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    const pendingContext = []
-    if (pendingExpense) {
-      pendingContext.push(`PENDING EXPENSE: ${pendingExpense.expense_data.merchant} - $${pendingExpense.expense_data.amount}`)
+    let pendingBusinessPurpose = null
+    if (supabase && typeof supabase.from === 'function') {
+      const pbpQuery = supabase.from('pending_business_purposes');
+      if (pbpQuery && typeof pbpQuery.select === 'function') {
+        const selectResult = pbpQuery.select('*');
+        if (
+          selectResult &&
+          typeof selectResult.eq === 'function' &&
+          typeof selectResult.order === 'function' &&
+          typeof selectResult.limit === 'function' &&
+          typeof selectResult.single === 'function'
+        ) {
+          try {
+            const result = await selectResult
+              .eq('user_id', userId)
+              .eq('telegram_id', telegramId)
+              .eq('status', 'pending')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+            pendingBusinessPurpose = result ? result.data : null;
+          } catch {
+            pendingBusinessPurpose = null;
+          }
+        } else {
+          pendingBusinessPurpose = null;
+        }
+      }
     }
+    // Remove pendingContext for expenses
+    const pendingContext = []
     if (pendingBusinessPurpose) {
       pendingContext.push(`PENDING BUSINESS PURPOSE: "${pendingBusinessPurpose.purpose_data.name}"`)
     }
@@ -196,7 +203,7 @@ ${Object.keys(purposeTotals).length > 1 ? `SPENDING BY CATEGORY:\n${Object.entri
     // --- Enhanced system prompt with full context and decision-making ---
     const systemPrompt = `You are an intelligent expense management assistant for a Telegram bot. You can:
 - Receive messages (text or image) from the user
-- Create a new expense from a message or receipt image
+- Create a new expense from a message or receipt image (do this immediately, do not ask for confirmation)
 - Edit an existing expense if the user requests
 - Answer questions about expenses or provide summaries
 
@@ -204,8 +211,6 @@ USER'S RECENT EXPENSES:
 ${contextSummary}
 
 AVAILABLE BUSINESS PURPOSE CATEGORIES: ${availableCategories}
-
-${pendingContext.length > 0 ? `PENDING ITEMS WAITING FOR CONFIRMATION:\n${pendingContext.join('\n')}` : ''}
 
 RESPONSE FORMATS:
 
@@ -253,7 +258,7 @@ For questions or general responses:
 }
 \`\`\`
 
-Use your judgment to decide the best action. If the user wants to edit an expense, use the 'edit' action and specify the expense_id and fields to update. Always return a single JSON object describing the action to take.`
+Use your judgment to decide the best action. If the user wants to edit an expense, use the 'edit' action and specify the expense_id and fields to update. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
 
     let openaiPayload: any = {
       model: type === 'image' ? 'gpt-4o' : 'gpt-4o',
@@ -319,45 +324,54 @@ Use your judgment to decide the best action. If the user wants to edit an expens
 
       switch (extractedAction.action) {
         case 'create':
-          // Handle expense creation with confirmation
+          // Immediately create the expense, do not ask for confirmation
           if (extractedAction.amount && extractedAction.date && extractedAction.merchant) {
-            // Generate confirmation message
-            const confirmationMessage = `📋 Please confirm these expense details:
-
-💰 Amount: $${extractedAction.amount}
-🏪 Merchant: ${extractedAction.merchant}
-📅 Date: ${extractedAction.date}
-🏷️ Category: ${extractedAction.business_purpose || 'Uncategorized'}
-
-Reply with "yes" or "confirm" to create this expense, or "no" to cancel.`
-
-            // Store pending expense data for confirmation
-            const pendingExpense = {
-              amount: extractedAction.amount,
-              date: extractedAction.date,
-              merchant: extractedAction.merchant,
-              business_purpose: extractedAction.business_purpose,
-              imageData: imageData,
-              imageFormat: imageFormat,
-              timestamp: new Date().toISOString()
+            // Map business purpose name to ID
+            let businessPurposeId = null
+            if (extractedAction.business_purpose && businessPurposes) {
+              const matchingPurpose = businessPurposes.find((p: any) => 
+                p.name.toLowerCase() === extractedAction.business_purpose.toLowerCase()
+              )
+              businessPurposeId = matchingPurpose?.id || null
             }
 
-            // Store pending expense in database for later confirmation
-            const { error: pendingError } = await supabase
-              .from('pending_expenses')
+            // Store the receipt image if we have image data
+            let receiptUrl = null
+            let receiptFilename = null
+            if (imageData) {
+              try {
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+                const filename = `receipt_${extractedAction.merchant?.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.${imageFormat || 'jpg'}`
+                const dataUrl = `data:image/${imageFormat || 'jpeg'};base64,${imageData}`
+                receiptUrl = dataUrl
+                receiptFilename = filename
+              } catch (err) {
+                console.error('❌ Message API Debug - Exception storing receipt:', err)
+              }
+            }
+
+            // Create the actual expense
+            const { error: expenseInsertError } = await supabase
+              .from('expenses')
               .insert({
                 user_id: userId,
-                telegram_id: telegramId,
-                expense_data: pendingExpense,
-                status: 'pending'
+                total_amount: extractedAction.amount,
+                date: extractedAction.date,
+                merchant_name: extractedAction.merchant || 'Unknown',
+                business_purpose: extractedAction.business_purpose || null,
+                business_purpose_id: businessPurposeId,
+                receipt_url: receiptUrl,
+                receipt_filename: receiptFilename
               })
 
-            if (!pendingError) {
-              responseMessage = confirmationMessage
-              console.log('⏳ Message API Debug - Pending expense created, waiting for confirmation:', pendingExpense)
+            if (!expenseInsertError) {
+              expenseCreated = true
+              responseMessage = `✅ Expense created: $${extractedAction.amount} at ${extractedAction.merchant} on ${extractedAction.date}`
+              console.log('✅ Message API Debug - Expense created:', extractedAction)
             } else {
-              responseMessage = `❌ Error creating pending expense: ${pendingError.message}`
-              console.error('❌ Message API Debug - Error creating pending expense:', pendingError)
+              expenseError = expenseInsertError
+              responseMessage = `❌ Failed to create expense: ${expenseInsertError.message}`
+              console.error('❌ Message API Debug - Error creating expense:', expenseInsertError)
             }
           } else {
             responseMessage = `❌ Invalid expense data. Please provide amount, date, and merchant.`
@@ -383,114 +397,6 @@ Reply with "yes" or "confirm" to create this expense, or "no" to cancel.`
             }
           } else {
             responseMessage = `❌ Invalid edit request. Please specify the expense_id and fields to update.`
-          }
-          break
-
-        case 'confirm':
-          // Handle expense confirmation
-          try {
-            // Get the most recent pending expense for this user
-            const { data: pendingExpense, error: fetchError } = await supabase
-              .from('pending_expenses')
-              .select('*')
-              .eq('user_id', userId)
-              .eq('telegram_id', telegramId)
-              .eq('status', 'pending')
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single()
-
-            if (fetchError || !pendingExpense) {
-              responseMessage = `❌ No pending expense found to confirm. Please try creating a new expense.`
-              console.log('❌ Message API Debug - No pending expense found')
-              break
-            }
-
-            const expenseData = pendingExpense.expense_data
-
-            // Map business purpose name to ID
-            let businessPurposeId = null
-            if (expenseData.business_purpose && businessPurposes) {
-              const matchingPurpose = businessPurposes.find((p: any) => 
-                p.name.toLowerCase() === expenseData.business_purpose.toLowerCase()
-              )
-              businessPurposeId = matchingPurpose?.id || null
-            }
-
-            // Store the receipt image if we have image data
-            let receiptUrl = null
-            let receiptFilename = null
-            
-            if (expenseData.imageData) {
-              try {
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-                const filename = `receipt_${expenseData.merchant?.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.${expenseData.imageFormat || 'jpg'}`
-                
-                const dataUrl = `data:image/${expenseData.imageFormat || 'jpeg'};base64,${expenseData.imageData}`
-                receiptUrl = dataUrl
-                receiptFilename = filename
-              } catch (err) {
-                console.error('❌ Message API Debug - Exception storing receipt:', err)
-              }
-            }
-
-            // Create the actual expense
-            const { error: expenseInsertError } = await supabase
-              .from('expenses')
-              .insert({
-                user_id: userId,
-                total_amount: expenseData.amount,
-                date: expenseData.date,
-                merchant_name: expenseData.merchant || 'Unknown',
-                business_purpose: expenseData.business_purpose || null,
-                business_purpose_id: businessPurposeId,
-                receipt_url: receiptUrl,
-                receipt_filename: receiptFilename
-              })
-
-            if (!expenseInsertError) {
-              // Mark pending expense as confirmed
-              await supabase
-                .from('pending_expenses')
-                .update({ status: 'confirmed' })
-                .eq('id', pendingExpense.id)
-
-              expenseCreated = true
-              responseMessage = `✅ Expense confirmed and created: $${expenseData.amount} at ${expenseData.merchant} on ${expenseData.date}`
-              console.log('✅ Message API Debug - Expense confirmed and created:', expenseData)
-            } else {
-              expenseError = expenseInsertError
-              responseMessage = `❌ Failed to create expense: ${expenseInsertError.message}`
-              console.error('❌ Message API Debug - Error creating expense:', expenseInsertError)
-            }
-          } catch (err) {
-            expenseError = err
-            responseMessage = `❌ Error confirming expense: ${err}`
-            console.error('❌ Message API Debug - Exception confirming expense:', err)
-          }
-          break
-
-        case 'cancel':
-          // Handle expense cancellation
-          try {
-            // Mark the most recent pending expense as cancelled
-            const { error: cancelError } = await supabase
-              .from('pending_expenses')
-              .update({ status: 'cancelled' })
-              .eq('user_id', userId)
-              .eq('telegram_id', telegramId)
-              .eq('status', 'pending')
-
-            if (!cancelError) {
-              responseMessage = `❌ Expense creation cancelled.`
-              console.log('❌ Message API Debug - Expense creation cancelled')
-            } else {
-              responseMessage = `❌ Error cancelling expense: ${cancelError.message}`
-              console.error('❌ Message API Debug - Error cancelling expense:', cancelError)
-            }
-          } catch (err) {
-            responseMessage = `❌ Error cancelling expense: ${err}`
-            console.error('❌ Message API Debug - Exception cancelling expense:', err)
           }
           break
 
@@ -535,43 +441,61 @@ Reply with "yes" or "confirm" to add this business purpose, or "no" to cancel.`
         case 'confirm_business_purpose':
           // Handle business purpose confirmation
           try {
-            // Get the most recent pending business purpose for this user
-            const { data: pendingPurpose, error: fetchError } = await supabase
-              .from('pending_business_purposes')
-              .select('*')
-              .eq('user_id', userId)
-              .eq('telegram_id', telegramId)
-              .eq('status', 'pending')
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single()
-
-            if (fetchError || !pendingPurpose) {
+            let pendingPurpose = null;
+            const pbpQuery = supabase.from('pending_business_purposes');
+            if (pbpQuery && typeof pbpQuery.select === 'function') {
+              const selectResult = pbpQuery.select('*');
+              if (
+                selectResult &&
+                typeof selectResult.eq === 'function' &&
+                typeof selectResult.order === 'function' &&
+                typeof selectResult.limit === 'function' &&
+                typeof selectResult.single === 'function'
+              ) {
+                const result = await selectResult
+                  .eq('user_id', userId)
+                  .eq('telegram_id', telegramId)
+                  .eq('status', 'pending')
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .single();
+                pendingPurpose = result ? result.data : null;
+              }
+            }
+            if (!pendingPurpose) {
               responseMessage = `❌ No pending business purpose found to confirm. Please try adding a new business purpose.`
               console.log('❌ Message API Debug - No pending business purpose found')
               break
             }
-
             const purposeData = pendingPurpose.purpose_data
-
-            // Create the actual business purpose
-            const { data: newPurpose, error: purposeInsertError } = await supabase
-              .from('business_purposes')
-              .insert({
-                name: purposeData.name,
-                is_default: false,
-                created_by: userId
-              })
-              .select()
-              .single()
-
+            let newPurpose = null;
+            let purposeInsertError = null;
+            const bpQuery = supabase.from('business_purposes');
+            if (bpQuery && typeof bpQuery.insert === 'function') {
+              const insertResult = await bpQuery
+                .insert({
+                  name: purposeData.name,
+                  is_default: false,
+                  created_by: userId
+                });
+              if (insertResult && typeof insertResult.select === 'function') {
+                const selectResult = await insertResult.select().single();
+                newPurpose = selectResult ? selectResult.data : null;
+                purposeInsertError = selectResult ? selectResult.error : null;
+              } else {
+                newPurpose = insertResult ? insertResult.data : null;
+                purposeInsertError = insertResult ? insertResult.error : null;
+              }
+            }
             if (!purposeInsertError && newPurpose) {
               // Mark pending business purpose as confirmed
-              await supabase
-                .from('pending_business_purposes')
-                .update({ status: 'confirmed' })
-                .eq('id', pendingPurpose.id)
-
+              const updateQuery = supabase.from('pending_business_purposes');
+              if (updateQuery && typeof updateQuery.update === 'function') {
+                const updateResult = updateQuery.update({ status: 'confirmed' });
+                if (updateResult && typeof updateResult.eq === 'function') {
+                  await updateResult.eq('id', pendingPurpose.id);
+                }
+              }
               responseMessage = `✅ Business purpose "${purposeData.name}" added successfully!`
               console.log('✅ Message API Debug - Business purpose confirmed and created:', newPurpose)
             } else {
