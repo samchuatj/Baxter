@@ -25,18 +25,16 @@ function AuthCallbackContent() {
       try {
         console.log('🔍 Auth callback page - Starting callback handling')
         
-        // Debug: Check all session storage items
-        console.log('🔍 Auth callback page - All session storage items:', {
-          oauth_next_url: sessionStorage.getItem('oauth_next_url'),
-          allKeys: Object.keys(sessionStorage)
-        })
-        
         // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
-        const state = searchParams.get('state')
+        const next = searchParams.get('next')
         
-        console.log('🔍 Auth callback page - URL parameters:', { code: !!code, error, state })
+        console.log('🔍 Auth callback page - URL parameters:', { 
+          code: !!code, 
+          error, 
+          next 
+        })
         
         // Handle OAuth errors
         if (error) {
@@ -60,30 +58,6 @@ function AuthCallbackContent() {
           console.log('🔍 Auth callback page - No OAuth code present')
         }
         
-        // Wait a bit more before checking session storage
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // Get the next URL from session storage or state parameter
-        let nextUrl = sessionStorage.getItem('oauth_next_url')
-        
-        // If not in session storage, try state parameter
-        if (!nextUrl && state) {
-          try {
-            nextUrl = decodeURIComponent(state)
-            console.log('🔍 Auth callback page - Retrieved next URL from state parameter:', nextUrl)
-          } catch (error) {
-            console.error('❌ Auth callback page - Error decoding state parameter:', error)
-          }
-        }
-        
-        console.log('🔍 Auth callback page - Final next URL:', nextUrl)
-        
-        // Clear the session storage
-        if (nextUrl) {
-          sessionStorage.removeItem('oauth_next_url')
-          console.log('🔍 Auth callback page - Cleared session storage')
-        }
-        
         // Check if user is authenticated
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         
@@ -102,12 +76,12 @@ function AuthCallbackContent() {
         
         // Determine redirect URL
         let redirectUrl: string
-        if (nextUrl) {
-          redirectUrl = nextUrl
-          console.log('🔍 Auth callback page - Redirecting to next URL:', redirectUrl)
+        if (next) {
+          redirectUrl = next
+          console.log('🔍 Auth callback page - Redirecting to next URL from parameter:', redirectUrl)
         } else {
           redirectUrl = '/'
-          console.log('🔍 Auth callback page - No next URL, redirecting to home')
+          console.log('🔍 Auth callback page - No next parameter, redirecting to home')
         }
         
         console.log('✅ Auth callback page - Final redirect to:', redirectUrl)
