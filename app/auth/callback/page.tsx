@@ -28,17 +28,17 @@ function AuthCallbackContent() {
         // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
-        const state = searchParams.get('state')
+        const next = searchParams.get('next')
         
         // Debug: Log all search parameters
         console.log('🔍 Auth callback page - All search parameters:', Object.fromEntries(searchParams.entries()))
         console.log('🔍 Auth callback page - URL parameters:', { 
           code: !!code, 
           error, 
-          state,
+          next,
           hasCode: !!code,
           hasError: !!error,
-          hasState: !!state
+          hasNext: !!next
         })
         
         // Handle OAuth errors
@@ -63,31 +63,30 @@ function AuthCallbackContent() {
           console.log('🔍 Auth callback page - No OAuth code present')
         }
         
-        // Check if user is authenticated
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        // Ensure session is restored and user is authenticated
+        console.log('🔍 Auth callback page - Ensuring session is restored...')
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
-        console.log('🔍 Auth callback page - User check:', {
-          hasUser: !!user,
-          error: userError?.message,
-          userId: user?.id,
-          email: user?.email
-        })
+        if (sessionError) {
+          console.error('❌ Auth callback page - Session error:', sessionError)
+          router.replace('/auth/login?error=session_failed')
+          return
+        }
         
-        if (userError || !user) {
-          console.log('❌ Auth callback page - User not authenticated, redirecting to login')
+        if (!session) {
+          console.log('❌ Auth callback page - No session found, redirecting to login')
           router.replace('/auth/login')
           return
         }
         
-        // Determine redirect URL from the state parameter
-        let redirectUrl: string
-        if (state) {
-          redirectUrl = state
-          console.log('🔍 Auth callback page - Redirecting to state URL:', redirectUrl)
-        } else {
-          redirectUrl = '/'
-          console.log('🔍 Auth callback page - No state URL found, redirecting to home')
-        }
+        console.log('🔍 Auth callback page - Session restored successfully:', {
+          userId: session.user.id,
+          email: session.user.email
+        })
+        
+        // Determine redirect URL from next parameter
+        const redirectUrl = next || '/'
+        console.log('🔍 Auth callback page - Redirecting to:', redirectUrl)
         
         console.log('✅ Auth callback page - Final redirect to:', redirectUrl)
         console.log('🔍 Auth callback page - About to call router.replace with:', redirectUrl)

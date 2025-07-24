@@ -63,24 +63,20 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
       hasNext: !!next
     })
     
-    // Use the standard callback URL
-    const callbackUrl = `${baseUrl}/auth/callback`
-    console.log('🔍 Google OAuth - Callback URL:', callbackUrl)
-    
-    // Prepare OAuth options
-    const options: any = {
-      redirectTo: callbackUrl,
-    }
-    
-    // If we have a next parameter, pass it via state (OAuth 2.0 standard)
+    // Build the redirectTo URL with next parameter
+    let redirectTo = `${baseUrl}/auth/callback`
     if (next) {
-      options.state = next
-      console.log('🔍 Google OAuth - Added state parameter:', next)
+      redirectTo += `?next=${encodeURIComponent(next)}`
+      console.log('🔍 Google OAuth - RedirectTo with next parameter:', redirectTo)
+    } else {
+      console.log('🔍 Google OAuth - RedirectTo (no next parameter):', redirectTo)
     }
     
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options,
+      options: {
+        redirectTo,
+      },
     })
   }
 
