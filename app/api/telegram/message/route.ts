@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { TelegramBotService } from '@/lib/telegram-bot'
+import { Buffer } from 'buffer'
 
 // Helper to extract JSON from LLM response
 function extractJsonFromText(text: string): any | null {
@@ -239,6 +241,7 @@ export async function POST(request: NextRequest) {
 - Receive messages (text or image) from the user
 - Create a new expense from a message or receipt image (do this immediately, do not ask for confirmation)
 - Edit an existing expense if the user requests
+- Send a receipt image or file to the user if requested (see below)
 - Answer questions about expenses or provide summaries
 
 ${chatLog ? `CHAT LOG (last 10 messages):\n${chatLog}\n` : ''}${repliedToMessage ? `USER'S REPLIED-TO MESSAGE:\n${repliedToMessage}\n` : ''}USER'S RECENT EXPENSES:
@@ -268,6 +271,14 @@ For editing an expense (IMPORTANT: Do NOT use an expense_id. Instead, specify a 
 }
 \`\`\`
 
+For sending a receipt image or file to the user (IMPORTANT: Do NOT use an expense_id. Instead, specify a filter object with as much detail as possible to uniquely identify the expense, e.g. by date, merchant, amount, and/or category):
+\`\`\`json
+{
+  "action": "send_receipt",
+  "filter": { "date": "2024-07-19", "merchant": "Coffee Shop", "amount": 12.34 }
+}
+\`\`\`
+
 For adding new business purposes:
 \`\`\`json
 {
@@ -292,7 +303,7 @@ For questions or general responses:
 }
 \`\`\`
 
-Use your judgment to decide the best action. If the user wants to edit an expense, use the 'edit' action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
+Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
 
     let openaiPayload: any = {
       model: type === 'image' ? 'gpt-4o' : 'gpt-4o',
@@ -624,6 +635,79 @@ Use your judgment to decide the best action. If the user wants to edit an expens
           responseMessage = extractedAction.text ? `💬 ${stripExpenseIds(extractedAction.text)}` : aiResponse || 'I understand your message.'
           console.log('💬 Message API Debug - General reply')
           break
+
+        case 'send_receipt':
+          // Handle sending a receipt file to the user
+          if (extractedAction.filter) {
+            // Build query to find the expense
+            let expenseQuery = supabase
+              .from('expenses')
+              .select('id, date, merchant_name, total_amount, business_purpose, receipt_url, receipt_filename')
+              .eq('user_id', userId)
+            if (extractedAction.filter.date) {
+              expenseQuery = expenseQuery.eq('date', extractedAction.filter.date)
+            }
+            if (extractedAction.filter.amount) {
+              expenseQuery = expenseQuery.eq('total_amount', extractedAction.filter.amount)
+            }
+            // Fetch all possible candidates
+            let candidateExpenses: any[] = [];
+            let matchError = null;
+            const result = await expenseQuery;
+            if (result && 'data' in result && 'error' in result) {
+              candidateExpenses = result.data || [];
+              matchError = result.error;
+            } else {
+              candidateExpenses = [];
+              matchError = null;
+            }
+            // Now filter in JS for merchant and business_purpose (case-insensitive)
+            let matchExpenses = candidateExpenses || []
+            if (extractedAction.filter.merchant) {
+              matchExpenses = matchExpenses.filter(exp =>
+                exp.merchant_name && exp.merchant_name.toLowerCase().includes(extractedAction.filter.merchant.toLowerCase())
+              )
+            }
+            if (extractedAction.filter.business_purpose) {
+              matchExpenses = matchExpenses.filter(exp =>
+                exp.business_purpose && exp.business_purpose.toLowerCase().includes(extractedAction.filter.business_purpose.toLowerCase())
+              )
+            }
+            if (!matchExpenses || matchExpenses.length === 0) {
+              responseMessage = `❌ Could not find any matching expense with a receipt to send. 🕵️\nPlease check your details and try again.`
+              break
+            }
+            if (matchExpenses.length > 1) {
+              responseMessage = `❌ Multiple expenses match your description. 🧐\nPlease be more specific (e.g., include date, merchant, and amount).`
+              break
+            }
+            // Unique match found
+            const expense = matchExpenses[0];
+            if (expense.receipt_url) {
+              // Parse data URL
+              const dataUrlMatch = expense.receipt_url.match(/^data:(.+);base64,(.+)$/)
+              if (!dataUrlMatch) {
+                responseMessage = `❌ Could not parse receipt file data. 🛑`
+                break
+              }
+              const mimeType = dataUrlMatch[1]
+              const base64Data = dataUrlMatch[2]
+              const fileBuffer = Buffer.from(base64Data, 'base64')
+              // Send file via Telegram
+              const telegramBot = new TelegramBotService({ webhookMode: true })
+              const sent = await telegramBot.sendReceiptFile(telegramId, fileBuffer, expense.receipt_filename || 'receipt', mimeType)
+              if (sent) {
+                responseMessage = `📎 Receipt sent for ${expense.date} at ${expense.merchant_name}!`
+              } else {
+                responseMessage = `❌ Failed to send receipt file to you on Telegram. 😢`
+              }
+            } else {
+              responseMessage = `❌ No receipt file found for this expense. 📄`
+            }
+          } else {
+            responseMessage = `❌ Invalid receipt request. Please specify the expense details (date, merchant, amount, etc). 📝`
+          }
+          break;
 
         default:
           // Fallback to original response

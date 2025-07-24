@@ -500,6 +500,23 @@ ${magicLink}
     }
   }
 
+  // Method to send a receipt file (image or PDF) to a Telegram user
+  public async sendReceiptFile(telegramId: number, fileBuffer: Buffer, filename: string, mimeType: string): Promise<boolean> {
+    try {
+      if (mimeType.startsWith('image/')) {
+        // Send as photo
+        await this.bot.sendPhoto(telegramId, fileBuffer, { caption: filename });
+      } else {
+        // Send as document (PDF or other)
+        await this.bot.sendDocument(telegramId, fileBuffer, {}, { filename, contentType: mimeType });
+      }
+      return true;
+    } catch (error) {
+      console.error('Error sending receipt file to Telegram user:', error);
+      return false;
+    }
+  }
+
   // For webhook mode, process a single update
   public async handleWebhookUpdate(update: any) {
     // node-telegram-bot-api provides a 'processUpdate' method for this
