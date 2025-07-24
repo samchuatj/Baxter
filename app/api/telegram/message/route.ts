@@ -259,11 +259,11 @@ For creating expenses (receipts/transactions):
 }
 \`\`\`
 
-For editing an expense:
+For editing an expense (IMPORTANT: Do NOT use an expense_id. Instead, specify a filter object with as much detail as possible to uniquely identify the expense, e.g. by date, merchant, amount, and/or category):
 \`\`\`json
 {
   "action": "edit",
-  "expense_id": "...", // Always use the id field from the expense summary above
+  "filter": { "date": "2024-07-19", "merchant": "Coffee Shop", "amount": 12.34 },
   "fields_to_update": { "amount": 20.00, "merchant": "New Name", ... }
 }
 \`\`\`
@@ -292,7 +292,7 @@ For questions or general responses:
 }
 \`\`\`
 
-Use your judgment to decide the best action. If the user wants to edit an expense, use the 'edit' action and specify the expense_id using the id field from the expense summary above. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
+Use your judgment to decide the best action. If the user wants to edit an expense, use the 'edit' action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
 
     let openaiPayload: any = {
       model: type === 'image' ? 'gpt-4o' : 'gpt-4o',
@@ -418,15 +418,61 @@ Use your judgment to decide the best action. If the user wants to edit an expens
           break
 
         case 'edit':
-          // Handle editing an existing expense
-          if (extractedAction.expense_id && extractedAction.fields_to_update && Object.keys(extractedAction.fields_to_update).length > 0) {
-            // Update the specified expense
+          // Handle editing an existing expense using filter object
+          if (extractedAction.filter && extractedAction.fields_to_update && Object.keys(extractedAction.fields_to_update).length > 0) {
+            // Build query to find the expense
+            let expenseQuery = supabase
+              .from('expenses')
+              .select('id, date, merchant_name, total_amount, business_purpose')
+              .eq('user_id', userId)
+            if (extractedAction.filter.date) {
+              expenseQuery = expenseQuery.eq('date', extractedAction.filter.date)
+            }
+            if (extractedAction.filter.amount) {
+              expenseQuery = expenseQuery.eq('total_amount', extractedAction.filter.amount)
+            }
+            // Fetch all possible candidates
+            let candidateExpenses: any[] = [];
+            let matchError = null;
+            const result = await expenseQuery;
+            if (result && 'data' in result && 'error' in result) {
+              candidateExpenses = result.data || [];
+              matchError = result.error;
+            } else {
+              candidateExpenses = [];
+              matchError = null;
+            }
+            if (matchError) {
+              responseMessage = `❌ Error searching for expense. 😢\nReason: ${matchError.message}`
+              break
+            }
+            // Now filter in JS for merchant and business_purpose (case-insensitive)
+            let matchExpenses = candidateExpenses || []
+            if (extractedAction.filter.merchant) {
+              matchExpenses = matchExpenses.filter(exp =>
+                exp.merchant_name && exp.merchant_name.toLowerCase().includes(extractedAction.filter.merchant.toLowerCase())
+              )
+            }
+            if (extractedAction.filter.business_purpose) {
+              matchExpenses = matchExpenses.filter(exp =>
+                exp.business_purpose && exp.business_purpose.toLowerCase().includes(extractedAction.filter.business_purpose.toLowerCase())
+              )
+            }
+            if (!matchExpenses || matchExpenses.length === 0) {
+              responseMessage = `❌ Could not find any matching expense to update. 🕵️\nPlease check your details and try again.`
+              break
+            }
+            if (matchExpenses.length > 1) {
+              responseMessage = `❌ Multiple expenses match your description. 🧐\nPlease be more specific (e.g., include date, merchant, and amount).`
+              break
+            }
+            // Unique match found
+            const expenseId = matchExpenses[0].id
             const { error: editError } = await supabase
               .from('expenses')
               .update(extractedAction.fields_to_update)
-              .eq('id', extractedAction.expense_id)
+              .eq('id', expenseId)
               .eq('user_id', userId)
-
             if (!editError) {
               responseMessage = `✅ Expense updated successfully! ✏️`
               console.log('✅ Message API Debug - Expense updated:', extractedAction)
@@ -435,7 +481,7 @@ Use your judgment to decide the best action. If the user wants to edit an expens
               console.error('❌ Message API Debug - Error updating expense:', editError)
             }
           } else {
-            responseMessage = `❌ Invalid edit request. Please specify the expense and fields to update. 📝`
+            responseMessage = `❌ Invalid edit request. Please specify the expense details (date, merchant, amount, etc) and fields to update. 📝`
           }
           break
 
@@ -443,7 +489,7 @@ Use your judgment to decide the best action. If the user wants to edit an expens
           // Handle adding new business purpose
           if (extractedAction.purpose_name) {
             // Generate confirmation message
-            const confirmationMessage = `🏷️ *Please confirm adding this new business purpose:*\n\n�� Name: "${extractedAction.purpose_name}"\n\nReply with "yes" or "confirm" to add this business purpose, or "no" to cancel.`
+            const confirmationMessage = `🏷️ *Please confirm adding this new business purpose:*\n\n Name: "${extractedAction.purpose_name}"\n\nReply with "yes" or "confirm" to add this business purpose, or "no" to cancel.`
 
             // Store pending business purpose for confirmation
             const pendingPurpose = {
