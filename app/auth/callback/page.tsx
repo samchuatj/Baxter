@@ -5,6 +5,26 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Loader2 } from 'lucide-react'
 
+// Helper function to get cookie value
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  
+  const value = `; ${document.cookie}`
+  const parts = value.split(`; ${name}=`)
+  if (parts.length === 2) {
+    const cookieValue = parts.pop()?.split(';').shift()
+    return cookieValue ? decodeURIComponent(cookieValue) : null
+  }
+  return null
+}
+
+// Helper function to clear cookie
+function clearCookie(name: string) {
+  if (typeof document === 'undefined') return
+  
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+}
+
 function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -28,7 +48,6 @@ function AuthCallbackContent() {
         // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
-        const next = searchParams.get('next')
         
         // Debug: Log all search parameters and URL info
         console.log('🔍 Auth callback page - Full URL:', window.location.href)
@@ -36,11 +55,8 @@ function AuthCallbackContent() {
         console.log('🔍 Auth callback page - URL parameters:', { 
           code: !!code, 
           error, 
-          next,
           hasCode: !!code,
-          hasError: !!error,
-          hasNext: !!next,
-          nextValue: next
+          hasError: !!error
         })
         
         // Handle OAuth errors
@@ -86,8 +102,18 @@ function AuthCallbackContent() {
           email: session.user.email
         })
         
-        // Determine redirect URL from next parameter
-        const redirectUrl = next || '/'
+        // Get the next URL from cookie
+        const nextUrl = getCookie('oauth_next_url')
+        console.log('🔍 Auth callback page - Next URL from cookie:', nextUrl)
+        
+        // Clear the cookie
+        if (nextUrl) {
+          clearCookie('oauth_next_url')
+          console.log('🔍 Auth callback page - Cleared oauth_next_url cookie')
+        }
+        
+        // Determine redirect URL
+        const redirectUrl = nextUrl || '/'
         console.log('🔍 Auth callback page - Redirecting to:', redirectUrl)
         
         console.log('✅ Auth callback page - Final redirect to:', redirectUrl)

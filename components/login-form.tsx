@@ -64,14 +64,21 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
       locationOrigin: typeof window !== 'undefined' ? window.location.origin : 'server'
     })
     
-    // Build the redirectTo URL with next parameter
-    let redirectTo = `${baseUrl}/auth/callback`
+    // Store the next URL in a cookie (more reliable than localStorage for OAuth)
     if (next) {
-      redirectTo += `?next=${encodeURIComponent(next)}`
-      console.log('🔍 Google OAuth - RedirectTo with next parameter:', redirectTo)
-    } else {
-      console.log('🔍 Google OAuth - RedirectTo (no next parameter):', redirectTo)
+      try {
+        // Set cookie with next URL - expires in 10 minutes
+        const expires = new Date(Date.now() + 10 * 60 * 1000).toUTCString()
+        document.cookie = `oauth_next_url=${encodeURIComponent(next)}; expires=${expires}; path=/; SameSite=Lax`
+        console.log('🔍 Google OAuth - Stored next URL in cookie:', next)
+      } catch (error) {
+        console.error('❌ Google OAuth - Error setting cookie:', error)
+      }
     }
+    
+    // Use the standard callback URL (without query params since they get stripped)
+    const redirectTo = `${baseUrl}/auth/callback`
+    console.log('🔍 Google OAuth - RedirectTo (standard):', redirectTo)
     
     // Log the exact OAuth call
     console.log('🔍 Google OAuth - About to call signInWithOAuth with:', {
