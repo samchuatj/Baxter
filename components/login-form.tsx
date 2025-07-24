@@ -57,6 +57,13 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
     const next = searchParams.get('next')
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
     
+    console.log('🔍 Google OAuth - Debug info:', {
+      next,
+      baseUrl,
+      hasNext: !!next,
+      encodedNext: next ? encodeURIComponent(next) : null
+    })
+    
     // Build callback URL with next parameter if it exists
     let callbackUrl = `${baseUrl}/auth/callback`
     if (next) {

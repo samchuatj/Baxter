@@ -30,10 +30,15 @@ function AuthCallbackContent() {
         const error = searchParams.get('error')
         const next = searchParams.get('next')
         
+        // Debug: Log all search parameters
+        console.log('🔍 Auth callback page - All search parameters:', Object.fromEntries(searchParams.entries()))
         console.log('🔍 Auth callback page - URL parameters:', { 
           code: !!code, 
           error, 
-          next 
+          next,
+          hasCode: !!code,
+          hasError: !!error,
+          hasNext: !!next
         })
         
         // Handle OAuth errors
@@ -85,6 +90,11 @@ function AuthCallbackContent() {
         }
         
         console.log('✅ Auth callback page - Final redirect to:', redirectUrl)
+        console.log('🔍 Auth callback page - About to call router.replace with:', redirectUrl)
+        
+        // Add a small delay before redirect to ensure everything is processed
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
         router.replace(redirectUrl)
         
       } catch (error) {
