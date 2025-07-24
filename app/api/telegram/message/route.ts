@@ -245,6 +245,8 @@ export async function POST(request: NextRequest) {
 - Answer questions about expenses or provide summaries
 - Manage business purposes (add, remove, list, view)
 
+IMPORTANT: When you receive a receipt image, you MUST automatically create an expense using the "create" action. Do not just describe what you see - actually create the expense record. Only use "reply" action for general questions or when you cannot extract expense data.
+
 ${chatLog ? `CHAT LOG (last 10 messages):\n${chatLog}\n` : ''}${repliedToMessage ? `USER'S REPLIED-TO MESSAGE:\n${repliedToMessage}\n` : ''}USER'S RECENT EXPENSES:
 ${contextSummary}
 
@@ -262,6 +264,8 @@ For creating expenses (receipts/transactions):
   "business_purpose": "Food"
 }
 \`\`\`
+
+NOTE: When analyzing receipt images, ALWAYS use the "create" action to automatically create the expense. Do not use "reply" action for receipts.
 
 For editing an expense (IMPORTANT: Do NOT use an expense_id. Instead, specify a filter object with as much detail as possible to uniquely identify the expense, e.g. by date, merchant, amount, and/or category):
 \`\`\`json
@@ -325,7 +329,9 @@ For business purpose management:
 - If user asks to "add business purpose [name]" or "create category [name]", use add_business_purpose action
 - If user asks to "list business purposes", "show categories", or "what categories do I have", use list_business_purposes action  
 - If user asks to "remove business purpose [name]" or "delete category [name]", use remove_business_purpose action
-- If user asks about business purposes in general, use list_business_purposes to show them what they have`
+- If user asks about business purposes in general, use list_business_purposes to show them what they have
+
+CRITICAL: When you receive a receipt image, you MUST use the "create" action to automatically create an expense. Never ask the user if they want to record it - just create it immediately. Only use "reply" for general questions or when you cannot extract expense data from the image.`
 
     let openaiPayload: any = {
       model: type === 'image' ? 'gpt-4o' : 'gpt-4o',
