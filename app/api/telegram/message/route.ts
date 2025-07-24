@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Create intelligent context summary ---
-    let contextSummary = 'No expenses found.'
+    let contextSummary = '😕 No expenses found.'
     
     if (userExpenses && userExpenses.length > 0) {
       const totalSpent = userExpenses.reduce((sum: any, exp: any) => sum + exp.total_amount, 0)
@@ -143,21 +143,32 @@ export async function POST(request: NextRequest) {
         return acc
       }, {})
 
+      // Emoji map for categories
+      const categoryEmojis: Record<string, string> = {
+        'Food': '🍔',
+        'Travel': '✈️',
+        'Software Subscription': '💻',
+        'Others': '🛒',
+        'Uncategorized': '❓'
+      }
+
       // Show all transactions for "all" requests, otherwise show recent ones
       const transactionsToShow = contextScope === 'all' ? userExpenses : userExpenses.slice(0, 5)
       
-      // Include the expense UUID (id) in each transaction line
-      contextSummary = `${contextScope.toUpperCase()} EXPENSES (${userExpenses.length} transactions):
-Total: $${totalSpent.toFixed(2)} | Average: $${avgSpent.toFixed(2)}
-
-${contextScope === 'all' ? 'ALL TRANSACTIONS:' : 'RECENT TRANSACTIONS:'}
-${transactionsToShow.map((exp: any) => 
-  `${exp.date}: $${exp.total_amount} at ${exp.merchant_name}${exp.business_purpose ? ` (${exp.business_purpose})` : ''} [id: ${exp.id}]`
-).join('\n')}
-
-${Object.keys(purposeTotals).length > 1 ? `SPENDING BY CATEGORY:\n${Object.entries(purposeTotals).map(([purpose, total]: [string, any]) => 
-  `${purpose}: $${total.toFixed(2)}`
-).join('\n')}` : ''}`
+      // Format each transaction line with emojis, no UUID
+      contextSummary = `💸 *${contextScope.toUpperCase()} EXPENSES* (${userExpenses.length} transactions):\n\n` +
+        `🧾 *Total*: $${totalSpent.toFixed(2)} | 📊 *Average*: $${avgSpent.toFixed(2)}\n\n` +
+        `${contextScope === 'all' ? '📜 *All Transactions*:' : '🕑 *Recent Transactions*:'}\n` +
+        transactionsToShow.map((exp: any) => {
+          const cat = exp.business_purpose || 'Uncategorized'
+          const emoji = categoryEmojis[cat] || '💵'
+          return `${emoji} ${exp.date}: $${exp.total_amount} at ${exp.merchant_name}${exp.business_purpose ? ` (${exp.business_purpose})` : ''}`
+        }).join('\n') +
+        (Object.keys(purposeTotals).length > 1 ? `\n\n📂 *Spending by Category:*\n` +
+          Object.entries(purposeTotals).map(([purpose, total]: [string, any]) => {
+            const emoji = categoryEmojis[purpose] || '💵'
+            return `${emoji} ${purpose}: $${total.toFixed(2)}`
+          }).join('\n') : '')
     }
 
     console.log('📊 Message API Debug - User expense context:', {
@@ -389,15 +400,15 @@ Use your judgment to decide the best action. If the user wants to edit an expens
 
             if (!expenseInsertError) {
               expenseCreated = true
-              responseMessage = `✅ Expense created: $${extractedAction.amount} at ${extractedAction.merchant} on ${extractedAction.date}`
+              responseMessage = `✅ Expense created! 🎉\n\n💵 Amount: $${extractedAction.amount}\n🏪 Merchant: ${extractedAction.merchant}\n📅 Date: ${extractedAction.date}${extractedAction.business_purpose ? `\n🏷️ Category: ${extractedAction.business_purpose}` : ''}`
               console.log('✅ Message API Debug - Expense created:', extractedAction)
             } else {
               expenseError = expenseInsertError
-              responseMessage = `❌ Failed to create expense: ${expenseInsertError.message}`
+              responseMessage = `❌ Failed to create expense. 😢\nReason: ${expenseInsertError.message}`
               console.error('❌ Message API Debug - Error creating expense:', expenseInsertError)
             }
           } else {
-            responseMessage = `❌ Invalid expense data. Please provide amount, date, and merchant.`
+            responseMessage = `❌ Invalid expense data. Please provide amount, date, and merchant. 📝`
           }
           break
 
@@ -412,14 +423,14 @@ Use your judgment to decide the best action. If the user wants to edit an expens
               .eq('user_id', userId)
 
             if (!editError) {
-              responseMessage = `✅ Expense updated successfully.`
+              responseMessage = `✅ Expense updated successfully! ✏️`
               console.log('✅ Message API Debug - Expense updated:', extractedAction)
             } else {
-              responseMessage = `❌ Failed to update expense: ${editError.message}`
+              responseMessage = `❌ Failed to update expense. 😢\nReason: ${editError.message}`
               console.error('❌ Message API Debug - Error updating expense:', editError)
             }
           } else {
-            responseMessage = `❌ Invalid edit request. Please specify the expense_id and fields to update.`
+            responseMessage = `❌ Invalid edit request. Please specify the expense and fields to update. 📝`
           }
           break
 
@@ -427,11 +438,7 @@ Use your judgment to decide the best action. If the user wants to edit an expens
           // Handle adding new business purpose
           if (extractedAction.purpose_name) {
             // Generate confirmation message
-            const confirmationMessage = `🏷️ Please confirm adding this new business purpose:
-
-📝 Name: "${extractedAction.purpose_name}"
-
-Reply with "yes" or "confirm" to add this business purpose, or "no" to cancel.`
+            const confirmationMessage = `🏷️ *Please confirm adding this new business purpose:*\n\n�� Name: "${extractedAction.purpose_name}"\n\nReply with "yes" or "confirm" to add this business purpose, or "no" to cancel.`
 
             // Store pending business purpose for confirmation
             const pendingPurpose = {
@@ -453,11 +460,11 @@ Reply with "yes" or "confirm" to add this business purpose, or "no" to cancel.`
               responseMessage = confirmationMessage
               console.log('⏳ Message API Debug - Pending business purpose created:', pendingPurpose)
             } else {
-              responseMessage = `❌ Error creating pending business purpose: ${pendingError.message}`
+              responseMessage = `❌ Error creating pending business purpose. 😢\nReason: ${pendingError.message}`
               console.error('❌ Message API Debug - Error creating pending business purpose:', pendingError)
             }
           } else {
-            responseMessage = `❌ Invalid business purpose data. Please provide a name.`
+            responseMessage = `❌ Invalid business purpose data. Please provide a name. 📝`
           }
           break
 
@@ -486,7 +493,7 @@ Reply with "yes" or "confirm" to add this business purpose, or "no" to cancel.`
               }
             }
             if (!pendingPurpose) {
-              responseMessage = `❌ No pending business purpose found to confirm. Please try adding a new business purpose.`
+              responseMessage = `❌ No pending business purpose found to confirm. Please try adding a new business purpose. 📝`
               console.log('❌ Message API Debug - No pending business purpose found')
               break
             }
@@ -519,14 +526,14 @@ Reply with "yes" or "confirm" to add this business purpose, or "no" to cancel.`
                   await updateResult.eq('id', pendingPurpose.id);
                 }
               }
-              responseMessage = `✅ Business purpose "${purposeData.name}" added successfully!`
+              responseMessage = `✅ Business purpose "${purposeData.name}" added successfully! 🎉`
               console.log('✅ Message API Debug - Business purpose confirmed and created:', newPurpose)
             } else {
-              responseMessage = `❌ Failed to create business purpose: ${purposeInsertError?.message || 'Unknown error'}`
+              responseMessage = `❌ Failed to create business purpose. 😢\nReason: ${purposeInsertError?.message || 'Unknown error'}`
               console.error('❌ Message API Debug - Error creating business purpose:', purposeInsertError)
             }
           } catch (err) {
-            responseMessage = `❌ Error confirming business purpose: ${err}`
+            responseMessage = `❌ Error confirming business purpose. 😢\nReason: ${err}`
             console.error('❌ Message API Debug - Exception confirming business purpose:', err)
           }
           break
@@ -543,33 +550,33 @@ Reply with "yes" or "confirm" to add this business purpose, or "no" to cancel.`
               .eq('status', 'pending')
 
             if (!cancelError) {
-              responseMessage = `❌ Business purpose creation cancelled.`
+              responseMessage = `❌ Business purpose creation cancelled. 🚫`
               console.log('❌ Message API Debug - Business purpose creation cancelled')
             } else {
-              responseMessage = `❌ Error cancelling business purpose: ${cancelError.message}`
+              responseMessage = `❌ Error cancelling business purpose. 😢\nReason: ${cancelError.message}`
               console.error('❌ Message API Debug - Error cancelling business purpose:', cancelError)
             }
           } catch (err) {
-            responseMessage = `❌ Error cancelling business purpose: ${err}`
+            responseMessage = `❌ Error cancelling business purpose. 😢\nReason: ${err}`
             console.error('❌ Message API Debug - Exception cancelling business purpose:', err)
           }
           break
 
         case 'summary':
           // Handle summary requests
-          responseMessage = extractedAction.text || 'Summary not available'
+          responseMessage = extractedAction.text ? `📝 ${extractedAction.text}` : 'Summary not available.'
           console.log('📊 Message API Debug - Summary requested')
           break
 
         case 'reply':
           // Handle general replies
-          responseMessage = extractedAction.text || aiResponse || 'I understand your message.'
+          responseMessage = extractedAction.text ? `💬 ${extractedAction.text}` : aiResponse || 'I understand your message.'
           console.log('💬 Message API Debug - General reply')
           break
 
         default:
           // Fallback to original response
-          responseMessage = aiResponse || processedMessage
+          responseMessage = aiResponse ? `💡 ${aiResponse}` : processedMessage
           console.log('🔄 Message API Debug - Unknown action, using original response')
       }
     } else {
