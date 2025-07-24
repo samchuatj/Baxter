@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { TelegramBotService } from '@/lib/telegram-bot'
 import { Buffer } from 'buffer'
+import crypto from 'crypto'
 
 // Helper to extract JSON from LLM response
 function extractJsonFromText(text: string): any | null {
@@ -416,6 +417,7 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
             // Store the receipt image if we have image data
             let receiptUrl = null
             let receiptFilename = null
+            let receiptHash = null
             if (imageData) {
               try {
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
@@ -423,8 +425,27 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
                 const dataUrl = `data:image/${imageFormat || 'jpeg'};base64,${imageData}`
                 receiptUrl = dataUrl
                 receiptFilename = filename
+                // Compute hash of the image data (base64 string)
+                const hash = crypto.createHash('sha256')
+                hash.update(imageData)
+                receiptHash = hash.digest('hex')
+                // Check for duplicate expense for this user and hash
+                const { data, error: dupError } = await supabase
+                  .from('expenses')
+                  .select('id')
+                  .eq('user_id', userId)
+                  .eq('receipt_hash', receiptHash)
+                  .single()
+                if (data) {
+                  responseMessage = `⚠️ This receipt has already been submitted as an expense. Duplicate not created.`
+                  break
+                }
+                if (dupError && dupError.code !== 'PGRST116') { // ignore no rows found
+                  responseMessage = `❌ Error checking for duplicate receipt. Please try again.`
+                  break
+                }
               } catch (err) {
-                console.error('❌ Message API Debug - Exception storing receipt:', err)
+                console.error('❌ Message API Debug - Exception storing receipt or checking duplicate:', err)
               }
             }
 
@@ -439,7 +460,8 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
                 business_purpose: extractedAction.business_purpose || null,
                 business_purpose_id: businessPurposeId,
                 receipt_url: receiptUrl,
-                receipt_filename: receiptFilename
+                receipt_filename: receiptFilename,
+                receipt_hash: receiptHash
               })
 
             if (!expenseInsertError) {
