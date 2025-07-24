@@ -201,6 +201,28 @@ ${Object.keys(purposeTotals).length > 1 ? `SPENDING BY CATEGORY:\n${Object.entri
       pendingContext.push(`PENDING BUSINESS PURPOSE: "${pendingBusinessPurpose.purpose_data.name}"`)
     }
 
+    // --- Fetch last 10 chat messages for context ---
+    let chatLog = ''
+    try {
+      const { data: chatMessages, error: chatLogError } = await supabase
+        .from('telegram_messages')
+        .select('message, type, created_at')
+        .eq('user_id', userId)
+        .eq('telegram_id', telegramId)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      if (!chatLogError && chatMessages && chatMessages.length > 0) {
+        // Show most recent last
+        const chatLines = chatMessages.reverse().map((msg: any) => {
+          const time = new Date(msg.created_at).toLocaleString('en-US', { hour12: false })
+          return `[${time}] (${msg.type}) ${msg.message}`
+        })
+        chatLog = chatLines.join('\n')
+      }
+    } catch (e) {
+      chatLog = ''
+    }
+
     // --- Enhanced system prompt with full context and decision-making ---
     const systemPrompt = `You are an intelligent expense management assistant for a Telegram bot. You can:
 - Receive messages (text or image) from the user
@@ -208,7 +230,7 @@ ${Object.keys(purposeTotals).length > 1 ? `SPENDING BY CATEGORY:\n${Object.entri
 - Edit an existing expense if the user requests
 - Answer questions about expenses or provide summaries
 
-${repliedToMessage ? `USER'S REPLIED-TO MESSAGE:\n${repliedToMessage}\n` : ''}USER'S RECENT EXPENSES:
+${chatLog ? `CHAT LOG (last 10 messages):\n${chatLog}\n` : ''}${repliedToMessage ? `USER'S REPLIED-TO MESSAGE:\n${repliedToMessage}\n` : ''}USER'S RECENT EXPENSES:
 ${contextSummary}
 
 AVAILABLE BUSINESS PURPOSE CATEGORIES: ${availableCategories}
