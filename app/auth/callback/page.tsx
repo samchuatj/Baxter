@@ -28,14 +28,17 @@ function AuthCallbackContent() {
         // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
+        const next = searchParams.get('next')
         
         // Debug: Log all search parameters
         console.log('🔍 Auth callback page - All search parameters:', Object.fromEntries(searchParams.entries()))
         console.log('🔍 Auth callback page - URL parameters:', { 
           code: !!code, 
           error, 
+          next,
           hasCode: !!code,
-          hasError: !!error
+          hasError: !!error,
+          hasNext: !!next
         })
         
         // Handle OAuth errors
@@ -76,20 +79,10 @@ function AuthCallbackContent() {
           return
         }
         
-        // Get the next URL from sessionStorage
-        const nextUrl = sessionStorage.getItem('oauth_next_url')
-        console.log('🔍 Auth callback page - Next URL from sessionStorage:', nextUrl)
-        
-        // Clear the sessionStorage
-        if (nextUrl) {
-          sessionStorage.removeItem('oauth_next_url')
-          console.log('🔍 Auth callback page - Cleared sessionStorage')
-        }
-        
-        // Determine redirect URL
+        // Determine redirect URL from the next parameter
         let redirectUrl: string
-        if (nextUrl) {
-          redirectUrl = nextUrl
+        if (next) {
+          redirectUrl = next
           console.log('🔍 Auth callback page - Redirecting to next URL:', redirectUrl)
         } else {
           redirectUrl = '/'
