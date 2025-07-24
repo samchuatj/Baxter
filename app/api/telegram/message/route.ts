@@ -303,7 +303,7 @@ For questions or general responses:
 }
 \`\`\`
 
-Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
+Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). If the user's message is a reply to a previous expense summary or confirmation, extract the relevant details (date, merchant, amount, etc.) from the replied-to message and use them in your filter for actions like send_receipt or edit. Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.`
 
     let openaiPayload: any = {
       model: type === 'image' ? 'gpt-4o' : 'gpt-4o',
