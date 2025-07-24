@@ -26,7 +26,11 @@ export default function ExpensesTable({ expenses }: ExpensesTableProps) {
     })
   }
 
-  const getBadgeVariant = (purposeName: string) => {
+  const getBadgeVariant = (purposeName: string, isDefault: boolean = false) => {
+    if (!isDefault) {
+      return "outline" // Custom purposes get outline variant
+    }
+    
     switch (purposeName) {
       case "Travel":
         return "default"
@@ -82,7 +86,7 @@ export default function ExpensesTable({ expenses }: ExpensesTableProps) {
               <TableCell className="text-right font-mono">{formatCurrency(expense.total_amount)}</TableCell>
               <TableCell>
                 {expense.business_purpose_name ? (
-                  <Badge variant={getBadgeVariant(expense.business_purpose_name)}>
+                  <Badge variant={getBadgeVariant(expense.business_purpose_name, expense.business_purpose_name === "Travel" || expense.business_purpose_name === "Software Subscription" || expense.business_purpose_name === "Food" || expense.business_purpose_name === "Others")}>
                     {expense.business_purpose_name}
                   </Badge>
                 ) : expense.business_purpose ? (

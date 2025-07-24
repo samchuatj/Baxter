@@ -123,6 +123,25 @@ export async function getBusinessPurposes(): Promise<BusinessPurpose[]> {
   try {
     const supabase = await createClient()
 
+    // Get the current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError) {
+      console.error("Error getting user:", userError)
+      return []
+    }
+
+    if (!user) {
+      console.error("No authenticated user found")
+      return []
+    }
+
+    // The RLS policies will automatically filter to show:
+    // 1. All default purposes (is_default = true)
+    // 2. User's own custom purposes (created_by = user.id)
     const { data: purposes, error } = await supabase
       .from("business_purposes")
       .select("*")

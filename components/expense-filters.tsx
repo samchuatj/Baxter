@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { CalendarIcon, FilterIcon, X } from "lucide-react"
+import { CalendarIcon, FilterIcon, X, Crown, User } from "lucide-react"
 import type { BusinessPurpose } from "@/lib/expenses"
+import AddBusinessPurposeForm from "./add-business-purpose-form"
 
 export interface FilterValues {
   dateFrom: string
@@ -31,6 +32,10 @@ export default function ExpenseFilters({ businessPurposes, onFiltersChange, init
       businessPurposeIds: [],
     },
   )
+
+  // Separate default and custom purposes
+  const defaultPurposes = businessPurposes.filter(purpose => purpose.is_default)
+  const customPurposes = businessPurposes.filter(purpose => !purpose.is_default)
 
   const handleDateFromChange = (value: string) => {
     const newFilters = { ...filters, dateFrom: value }
@@ -85,6 +90,12 @@ export default function ExpenseFilters({ businessPurposes, onFiltersChange, init
       default:
         return "default"
     }
+  }
+
+  const handlePurposeAdded = (newPurpose: BusinessPurpose) => {
+    // Refresh the business purposes list by triggering a page reload
+    // This is a simple approach - in a more complex app, you might want to use a state management solution
+    window.location.reload()
   }
 
   return (
@@ -167,21 +178,61 @@ export default function ExpenseFilters({ businessPurposes, onFiltersChange, init
             {/* Business Purpose Filters */}
             <div className="space-y-4">
               <h3 className="font-medium text-sm text-gray-700">Business Purpose</h3>
-              <div className="space-y-3">
-                {businessPurposes.map((purpose) => (
-                  <div key={purpose.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={purpose.id}
-                      checked={filters.businessPurposeIds.includes(purpose.id)}
-                      onCheckedChange={(checked) => handleBusinessPurposeToggle(purpose.id, checked as boolean)}
-                    />
-                    <Label htmlFor={purpose.id} className="text-sm font-normal cursor-pointer">
-                      <Badge variant={getBadgeVariant(purpose.name)} className="ml-1">
-                        {purpose.name}
-                      </Badge>
-                    </Label>
+              
+              {/* Default Business Purposes */}
+              {defaultPurposes.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
+                    <Crown className="h-3 w-3" />
+                    Default Categories
                   </div>
-                ))}
+                  {defaultPurposes.map((purpose) => (
+                    <div key={purpose.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={purpose.id}
+                        checked={filters.businessPurposeIds.includes(purpose.id)}
+                        onCheckedChange={(checked) => handleBusinessPurposeToggle(purpose.id, checked as boolean)}
+                      />
+                      <Label htmlFor={purpose.id} className="text-sm font-normal cursor-pointer">
+                        <Badge variant={getBadgeVariant(purpose.name)} className="ml-1">
+                          {purpose.name}
+                        </Badge>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Custom Business Purposes */}
+              {customPurposes.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
+                    <User className="h-3 w-3" />
+                    Your Custom Categories
+                  </div>
+                  {customPurposes.map((purpose) => (
+                    <div key={purpose.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={purpose.id}
+                        checked={filters.businessPurposeIds.includes(purpose.id)}
+                        onCheckedChange={(checked) => handleBusinessPurposeToggle(purpose.id, checked as boolean)}
+                      />
+                      <Label htmlFor={purpose.id} className="text-sm font-normal cursor-pointer">
+                        <Badge variant="outline" className="ml-1">
+                          {purpose.name}
+                        </Badge>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add New Business Purpose Form */}
+              <div className="pt-2">
+                <AddBusinessPurposeForm 
+                  onPurposeAdded={handlePurposeAdded}
+                  existingPurposes={businessPurposes}
+                />
               </div>
             </div>
           </div>
