@@ -44,7 +44,9 @@ function TelegramAuthContent() {
           console.log('🔍 Telegram auth - Stored auth params in session storage')
           
           // Redirect to login with next param pointing to telegram auth
-          router.replace('/auth/login?next=/auth/telegram')
+          const loginUrl = '/auth/login?next=/auth/telegram'
+          console.log('🔍 Telegram auth - Redirecting to login:', loginUrl)
+          router.replace(loginUrl)
           return
         }
 

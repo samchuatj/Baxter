@@ -39,6 +39,16 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const [state, formAction] = useActionState(signIn, null)
   const supabase = createClientComponentClient()
 
+  // Debug: Log search parameters on component mount
+  useEffect(() => {
+    const next = searchParams.get('next')
+    console.log('🔍 Login form - Component mounted with search params:', {
+      next,
+      hasNext: !!next,
+      allParams: Object.fromEntries(searchParams.entries())
+    })
+  }, [searchParams])
+
   useEffect(() => {
     if (state?.success) {
       if (onSuccess) {
