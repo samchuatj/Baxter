@@ -28,17 +28,14 @@ function AuthCallbackContent() {
         // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
-        const nextFromUrl = searchParams.get('next')
         
         // Debug: Log all search parameters
         console.log('🔍 Auth callback page - All search parameters:', Object.fromEntries(searchParams.entries()))
         console.log('🔍 Auth callback page - URL parameters:', { 
           code: !!code, 
           error, 
-          nextFromUrl,
           hasCode: !!code,
-          hasError: !!error,
-          hasNextFromUrl: !!nextFromUrl
+          hasError: !!error
         })
         
         // Handle OAuth errors
@@ -79,27 +76,14 @@ function AuthCallbackContent() {
           return
         }
         
-        // Try to get the next URL from multiple sources
-        let nextUrl = nextFromUrl
+        // Get the next URL from sessionStorage
+        const nextUrl = sessionStorage.getItem('oauth_next_url')
+        console.log('🔍 Auth callback page - Next URL from sessionStorage:', nextUrl)
         
-        // If not in URL, try localStorage
-        if (!nextUrl) {
-          try {
-            nextUrl = localStorage.getItem('oauth_next_url')
-            console.log('🔍 Auth callback page - Next URL from localStorage:', nextUrl)
-          } catch (error) {
-            console.error('❌ Auth callback page - Error reading localStorage:', error)
-          }
-        }
-        
-        // Clear the localStorage
+        // Clear the sessionStorage
         if (nextUrl) {
-          try {
-            localStorage.removeItem('oauth_next_url')
-            console.log('🔍 Auth callback page - Cleared localStorage')
-          } catch (error) {
-            console.error('❌ Auth callback page - Error clearing localStorage:', error)
-          }
+          sessionStorage.removeItem('oauth_next_url')
+          console.log('🔍 Auth callback page - Cleared sessionStorage')
         }
         
         // Determine redirect URL
