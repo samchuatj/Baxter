@@ -17,7 +17,7 @@ function extractJsonFromText(text: string): any | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const { telegramId, userId, message, type, imageData, imageFormat } = await request.json()
+    const { telegramId, userId, message, type, imageData, imageFormat, repliedToMessage } = await request.json()
 
     console.log('🔍 Message API Debug - Received request:', { 
       telegramId, 
@@ -208,7 +208,7 @@ ${Object.keys(purposeTotals).length > 1 ? `SPENDING BY CATEGORY:\n${Object.entri
 - Edit an existing expense if the user requests
 - Answer questions about expenses or provide summaries
 
-USER'S RECENT EXPENSES:
+${repliedToMessage ? `USER'S REPLIED-TO MESSAGE:\n${repliedToMessage}\n` : ''}USER'S RECENT EXPENSES:
 ${contextSummary}
 
 AVAILABLE BUSINESS PURPOSE CATEGORIES: ${availableCategories}

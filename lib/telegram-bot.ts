@@ -246,7 +246,13 @@ ${magicLink}
       const telegramId = msg.from!.id
       const text = msg.text!
 
-      console.log('📝 Bot Debug - Received text message:', { telegramId, text })
+      // Extract replied-to message text if present
+      let repliedToMessage = null
+      if (msg.reply_to_message && msg.reply_to_message.text) {
+        repliedToMessage = msg.reply_to_message.text
+      }
+
+      console.log('📝 Bot Debug - Received text message:', { telegramId, text, repliedToMessage })
 
       // Check if user is linked
       const supabase = createSupabaseClient()
@@ -270,7 +276,8 @@ ${magicLink}
         telegramId,
         userId: linkedUser.user_id,
         message: text,
-        type: 'text'
+        type: 'text',
+        repliedToMessage
       })
       
       const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/message`, {
@@ -282,7 +289,8 @@ ${magicLink}
           telegramId,
           userId: linkedUser.user_id,
           message: text,
-          type: 'text'
+          type: 'text',
+          repliedToMessage
         })
       })
 
