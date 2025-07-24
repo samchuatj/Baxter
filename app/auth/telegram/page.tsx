@@ -101,6 +101,12 @@ function TelegramAuthContent() {
     router.push('/auth/login')
   }
 
+  const handleGoToTelegram = () => {
+    // Get bot username from environment variable or use a fallback
+    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'baxter_expense_bot'
+    window.open(`https://t.me/${botUsername}`, '_blank')
+  }
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
@@ -128,9 +134,14 @@ function TelegramAuthContent() {
         
         <div className="space-y-2">
           {status === 'success' && (
-            <Button onClick={handleRedirect} className="w-full">
-              Go to Dashboard
-            </Button>
+            <div className="space-y-2">
+              <Button onClick={handleGoToTelegram} className="w-full">
+                Go to Telegram
+              </Button>
+              <Button onClick={handleRedirect} variant="outline" className="w-full">
+                Go to Dashboard
+              </Button>
+            </div>
           )}
           
           {status === 'error' && (

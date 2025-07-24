@@ -15,6 +15,7 @@ This guide will help you set up the Telegram bot integration with your Baxter ex
 3. **Choose a name** for your bot (e.g., "Baxter Expense Manager")
 4. **Choose a username** for your bot (must end with 'bot', e.g., "baxter_expense_bot")
 5. **Copy the bot token** that BotFather gives you
+6. **Note your bot username** (e.g., "baxter_expense_bot")
 
 ## Step 2: Set Up Environment Variables
 
@@ -23,6 +24,7 @@ Add these variables to your `.env.local` file:
 ```bash
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN=your_bot_token_here
+NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=your_bot_username_here
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
