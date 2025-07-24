@@ -300,7 +300,7 @@ ${magicLink}
       if (response.ok) {
         const result = await response.json()
         console.log('📝 Bot Debug - API response:', result)
-        await this.bot.sendMessage(chatId, `✅ Message processed: ${result.message}`)
+        await this.bot.sendMessage(chatId, result.message)
       } else {
         const errorText = await response.text()
         console.error('📝 Bot Debug - API error response:', errorText)
