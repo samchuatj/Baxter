@@ -28,14 +28,17 @@ function AuthCallbackContent() {
         // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
+        const nextFromUrl = searchParams.get('next')
         
         // Debug: Log all search parameters
         console.log('🔍 Auth callback page - All search parameters:', Object.fromEntries(searchParams.entries()))
         console.log('🔍 Auth callback page - URL parameters:', { 
           code: !!code, 
           error, 
+          nextFromUrl,
           hasCode: !!code,
-          hasError: !!error
+          hasError: !!error,
+          hasNextFromUrl: !!nextFromUrl
         })
         
         // Handle OAuth errors
@@ -76,24 +79,37 @@ function AuthCallbackContent() {
           return
         }
         
-        // Get the next URL from localStorage
-        const nextUrl = localStorage.getItem('oauth_next_url')
-        console.log('🔍 Auth callback page - Next URL from localStorage:', nextUrl)
+        // Try to get the next URL from multiple sources
+        let nextUrl = nextFromUrl
+        
+        // If not in URL, try localStorage
+        if (!nextUrl) {
+          try {
+            nextUrl = localStorage.getItem('oauth_next_url')
+            console.log('🔍 Auth callback page - Next URL from localStorage:', nextUrl)
+          } catch (error) {
+            console.error('❌ Auth callback page - Error reading localStorage:', error)
+          }
+        }
         
         // Clear the localStorage
         if (nextUrl) {
-          localStorage.removeItem('oauth_next_url')
-          console.log('🔍 Auth callback page - Cleared localStorage')
+          try {
+            localStorage.removeItem('oauth_next_url')
+            console.log('🔍 Auth callback page - Cleared localStorage')
+          } catch (error) {
+            console.error('❌ Auth callback page - Error clearing localStorage:', error)
+          }
         }
         
         // Determine redirect URL
         let redirectUrl: string
         if (nextUrl) {
           redirectUrl = nextUrl
-          console.log('🔍 Auth callback page - Redirecting to next URL from localStorage:', redirectUrl)
+          console.log('🔍 Auth callback page - Redirecting to next URL:', redirectUrl)
         } else {
           redirectUrl = '/'
-          console.log('🔍 Auth callback page - No next URL in localStorage, redirecting to home')
+          console.log('🔍 Auth callback page - No next URL found, redirecting to home')
         }
         
         console.log('✅ Auth callback page - Final redirect to:', redirectUrl)
