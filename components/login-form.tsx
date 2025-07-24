@@ -64,14 +64,15 @@ export default function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
       encodedNext: next ? encodeURIComponent(next) : null
     })
     
-    // Build callback URL with next parameter if it exists
-    let callbackUrl = `${baseUrl}/auth/callback`
+    // Store the next parameter in localStorage before OAuth
     if (next) {
-      callbackUrl += `?next=${encodeURIComponent(next)}`
-      console.log('🔍 Google OAuth - Callback URL with next parameter:', callbackUrl)
-    } else {
-      console.log('🔍 Google OAuth - Callback URL without next parameter:', callbackUrl)
+      localStorage.setItem('oauth_next_url', next)
+      console.log('🔍 Google OAuth - Stored next URL in localStorage:', next)
     }
+    
+    // Use the standard Supabase auth callback URL
+    const callbackUrl = `${baseUrl}/auth/callback`
+    console.log('🔍 Google OAuth - Callback URL:', callbackUrl)
     
     await supabase.auth.signInWithOAuth({
       provider: "google",

@@ -28,17 +28,14 @@ function AuthCallbackContent() {
         // Check if we have an OAuth code or error
         const code = searchParams.get('code')
         const error = searchParams.get('error')
-        const next = searchParams.get('next')
         
         // Debug: Log all search parameters
         console.log('🔍 Auth callback page - All search parameters:', Object.fromEntries(searchParams.entries()))
         console.log('🔍 Auth callback page - URL parameters:', { 
           code: !!code, 
           error, 
-          next,
           hasCode: !!code,
-          hasError: !!error,
-          hasNext: !!next
+          hasError: !!error
         })
         
         // Handle OAuth errors
@@ -79,14 +76,24 @@ function AuthCallbackContent() {
           return
         }
         
+        // Get the next URL from localStorage
+        const nextUrl = localStorage.getItem('oauth_next_url')
+        console.log('🔍 Auth callback page - Next URL from localStorage:', nextUrl)
+        
+        // Clear the localStorage
+        if (nextUrl) {
+          localStorage.removeItem('oauth_next_url')
+          console.log('🔍 Auth callback page - Cleared localStorage')
+        }
+        
         // Determine redirect URL
         let redirectUrl: string
-        if (next) {
-          redirectUrl = next
-          console.log('🔍 Auth callback page - Redirecting to next URL from parameter:', redirectUrl)
+        if (nextUrl) {
+          redirectUrl = nextUrl
+          console.log('🔍 Auth callback page - Redirecting to next URL from localStorage:', redirectUrl)
         } else {
           redirectUrl = '/'
-          console.log('🔍 Auth callback page - No next parameter, redirecting to home')
+          console.log('🔍 Auth callback page - No next URL in localStorage, redirecting to home')
         }
         
         console.log('✅ Auth callback page - Final redirect to:', redirectUrl)

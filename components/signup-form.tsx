@@ -48,14 +48,22 @@ export default function SignUpForm({ onSuccess }: { onSuccess?: () => void }) {
     const next = searchParams.get('next')
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://baxterai.onrender.com'
 
-    // Build callback URL with next parameter if it exists
-    let callbackUrl = `${baseUrl}/auth/callback`
+    console.log('🔍 Google OAuth - Debug info:', {
+      next,
+      baseUrl,
+      hasNext: !!next,
+      encodedNext: next ? encodeURIComponent(next) : null
+    })
+
+    // Store the next parameter in localStorage before OAuth
     if (next) {
-      callbackUrl += `?next=${encodeURIComponent(next)}`
-      console.log('🔍 Google OAuth - Callback URL with next parameter:', callbackUrl)
-    } else {
-      console.log('🔍 Google OAuth - Callback URL without next parameter:', callbackUrl)
+      localStorage.setItem('oauth_next_url', next)
+      console.log('🔍 Google OAuth - Stored next URL in localStorage:', next)
     }
+    
+    // Use the standard Supabase auth callback URL
+    const callbackUrl = `${baseUrl}/auth/callback`
+    console.log('🔍 Google OAuth - Callback URL:', callbackUrl)
     
     await supabase.auth.signInWithOAuth({
       provider: "google",
