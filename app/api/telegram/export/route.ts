@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
       case 'excel':
         const workbook = XLSX.utils.book_new()
         
-        // Create worksheet data
+        // Create worksheet data with better formatting
         const wsData = [
           ['Date', 'Merchant', 'Amount', 'Category', 'Receipt'],
           ...exportData.map((exp: any) => [
@@ -199,11 +199,25 @@ export async function POST(request: NextRequest) {
         
         const worksheet = XLSX.utils.aoa_to_sheet(wsData)
         
+        // Set column widths for better readability
+        const colWidths = [
+          { wch: 12 }, // Date
+          { wch: 25 }, // Merchant
+          { wch: 12 }, // Amount
+          { wch: 20 }, // Category
+          { wch: 10 }  // Receipt
+        ]
+        worksheet['!cols'] = colWidths
+        
         // Add metadata
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Expenses')
         
-        // Generate buffer
-        fileBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+        // Generate buffer with compression
+        fileBuffer = XLSX.write(workbook, { 
+          type: 'buffer', 
+          bookType: 'xlsx',
+          compression: true
+        })
         filename = `expenses_${dateRange.replace(/\s+/g, '_')}.xlsx`
         mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         break
