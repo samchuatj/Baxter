@@ -124,7 +124,7 @@ Once the basic authentication is working, you can extend the bot with features l
 - Receipt upload via Telegram
 - Expense notifications
 - Budget alerts
-- Export functionality
+- **Export functionality** - Users can request PDF, CSV, and Excel exports of their transactions
 
 ## Production Considerations
 

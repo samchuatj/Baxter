@@ -625,6 +625,17 @@ Just send a message or a photo of a receipt to get started!`,
     }
   }
 
+  // Method to send a document to a Telegram user with caption
+  public async sendDocument(telegramId: number, fileBuffer: Buffer, filename: string, options?: { caption?: string }): Promise<boolean> {
+    try {
+      await this.bot.sendDocument(telegramId, fileBuffer, options || {}, { filename });
+      return true;
+    } catch (error) {
+      console.error('Error sending document to Telegram user:', error);
+      return false;
+    }
+  }
+
   // For webhook mode, process a single update
   public async handleWebhookUpdate(update: any) {
     // node-telegram-bot-api provides a 'processUpdate' method for this

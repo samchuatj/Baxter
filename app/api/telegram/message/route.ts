@@ -375,6 +375,33 @@ For questions or general responses:
 }
 \`\`\`
 
+For exporting expense reports:
+\`\`\`json
+{
+  "action": "export",
+  "format": "pdf|csv|excel",
+  "dateFrom": "2024-01-01",
+  "dateTo": "2024-12-31",
+  "businessPurposeIds": ["uuid1", "uuid2"]
+}
+\`\`\`
+
+When users request exports, support these formats:
+- PDF: "export as pdf", "send me a pdf report", "pdf export"
+- CSV: "export as csv", "send me a csv file", "csv export" 
+- Excel: "export as excel", "send me an excel file", "xlsx export"
+
+You can also filter by date range:
+- "export this month" → dateFrom: first day of current month, dateTo: last day of current month
+- "export last month" → dateFrom: first day of previous month, dateTo: last day of previous month
+- "export this year" → dateFrom: January 1st of current year, dateTo: December 31st of current year
+- "export from 2024-01-01 to 2024-12-31" → specific date range
+
+Examples:
+- "Export my expenses as PDF" → { "action": "export", "format": "pdf" }
+- "Send me a CSV of this month's expenses" → { "action": "export", "format": "csv", "dateFrom": "2024-07-01", "dateTo": "2024-07-31" }
+- "Excel export of last month" → { "action": "export", "format": "excel", "dateFrom": "2024-06-01", "dateTo": "2024-06-30" }
+
 Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). 
 
 CRITICAL: If the user's message is a reply to a previous message (repliedToMessage is provided), ALWAYS extract expense details from the replied-to message to identify which expense they want to edit. The replied-to message typically contains the expense details that the user wants to modify.
@@ -963,6 +990,46 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
             responseMessage = `❌ Invalid receipt request. Please specify the expense details (date, merchant, amount, etc). 📝`
           }
           break;
+
+        case 'export':
+          // Handle export requests
+          if (extractedAction.format) {
+            try {
+              console.log('📊 Message API Debug - Export requested:', extractedAction)
+              
+              // Call the export API
+              const exportResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/export`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  telegramId,
+                  userId,
+                  format: extractedAction.format,
+                  dateFrom: extractedAction.dateFrom,
+                  dateTo: extractedAction.dateTo,
+                  businessPurposeIds: extractedAction.businessPurposeIds
+                })
+              })
+
+              if (exportResponse.ok) {
+                const result = await exportResponse.json()
+                responseMessage = result.message || '✅ Export completed successfully!'
+                console.log('✅ Message API Debug - Export successful:', result)
+              } else {
+                const errorResult = await exportResponse.json()
+                responseMessage = `❌ Export failed: ${errorResult.error || 'Unknown error'}`
+                console.error('❌ Message API Debug - Export failed:', errorResult)
+              }
+            } catch (error) {
+              responseMessage = `❌ Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+              console.error('❌ Message API Debug - Export exception:', error)
+            }
+          } else {
+            responseMessage = `❌ Invalid export request. Please specify a format (pdf, csv, or excel). 📝`
+          }
+          break
 
         default:
           // Fallback to original response
