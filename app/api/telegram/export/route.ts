@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import { TelegramBotService } from '@/lib/telegram-bot'
-
-// Add autoTable to jsPDF
-(jsPDF as any).autoTable = autoTable
 
 interface ExportRequest {
   telegramId: number
