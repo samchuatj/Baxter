@@ -206,13 +206,17 @@ export class TelegramBotService {
       console.log('🔍 [START_COMMAND] Sending magic link message to user')
       await this.bot.sendMessage(
         chatId,
-        `🔐 Welcome to Baxter Expense Manager! [TEST-UNIQUE-STRING-123]
+        `👋 Hey there, and welcome to Baxter Expense Manager!
 
-To link your Telegram account to your Baxter account, please click the magic link below:
+We're excited to have you on board. To connect your Telegram account with your Baxter profile, just tap the magic link below:
 
-${magicLink}
+🔗 Click to link your account
 
-⚠️ Important: This link will expire in 10 minutes for security reasons. You can sign in or sign up after clicking the link.`
+⚠️ Heads up: For your security, this link will expire in 10 minutes. If it times out, no worries — just hit /start in the chat to get a fresh one.
+
+Let's get your expenses under control — together! 💼✨
+
+${magicLink}`
       )
 
     } catch (error: any) {
