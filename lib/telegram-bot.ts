@@ -150,7 +150,7 @@ export class TelegramBotService {
       if (existingUser) {
         await this.bot.sendMessage(
           chatId,
-          '✅ You are already linked to your account! You can now use the bot to manage your expenses.\n\nHere\'s what I can help you with:\n\n• Track your expenses\n• Upload receipts as photos\n• Get summaries and reports\n\nJust send me a message or a photo of a receipt to get started!'
+          '✅ You are already linked to your account! You can now use the bot to manage your expenses.\n\nHere\'s what I can help you with:\n\n• Track your expenses\n• Upload receipts as photos\n• Get summaries and reports\n\nJust send me a message or a photo of a receipt to get started!\n\n💡 Tip: You can also send me photos of receipts to automatically extract expense information.'
         )
         return
       }
