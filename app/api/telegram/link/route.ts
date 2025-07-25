@@ -129,7 +129,17 @@ export async function POST(request: NextRequest) {
       const bot = new TelegramBotService({ webhookMode: true })
       const messageSent = await bot.sendMessage(
         telegramId,
-        '✅ Account linked successfully! You can now use the bot for expense tracking.'
+        `🎉 Successfully linked! Your Telegram account is now connected to your Baxter account.
+
+Here's what you can do with *Baxter Expense Manager*:
+
+📸 *Upload receipts* — Send me photos of your receipts and I'll extract all the details automatically
+📊 *Track spending* — Ask me about your expenses, get summaries, and see spending patterns
+💼 *Business categorization* — I'll help categorize your expenses for tax and business purposes
+📈 *Smart insights* — Get spending analysis and budget recommendations
+
+Just send a message or a photo of a receipt to get started!`,
+        { parse_mode: 'Markdown' }
       )
       
       if (!messageSent) {
