@@ -75,10 +75,25 @@ setupWebhook().then(() => {
   console.log('✅ Telegram bot webhook service ready!');
   console.log('🔄 Keeping process alive for Render...');
   
-  // Keep the process alive with periodic logging
+  // Keep the process alive with periodic logging and health checks
+  let heartbeatCount = 0;
   setInterval(() => {
-    console.log('💓 Bot service heartbeat...');
+    heartbeatCount++;
+    console.log(`💓 Bot service heartbeat... (${heartbeatCount})`);
+    
+    // Log memory usage every 10 heartbeats (5 minutes)
+    if (heartbeatCount % 10 === 0) {
+      const memUsage = process.memoryUsage();
+      console.log(`🔍 Memory usage:`, {
+        rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+        heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`
+      });
+    }
   }, 30000); // Log every 30 seconds
+}).catch((error) => {
+  console.error('❌ Failed to setup webhook:', error);
+  process.exit(1);
 });
 
 // Handle graceful shutdown
@@ -104,4 +119,16 @@ process.on('SIGTERM', async () => {
     console.error('❌ Error deleting webhook:', error);
   }
   process.exit(0);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
 }); 

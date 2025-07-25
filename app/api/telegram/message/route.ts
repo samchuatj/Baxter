@@ -268,14 +268,34 @@ For creating expenses (receipts/transactions):
 
 NOTE: When analyzing receipt images, ALWAYS use the "create" action to automatically create the expense. Do not use "reply" action for receipts.
 
-For editing an expense (IMPORTANT: Do NOT use an expense_id. Instead, specify a filter object with as much detail as possible to uniquely identify the expense, e.g. by date, merchant, amount, and/or category):
+For editing an expense (IMPORTANT: Do NOT use an expense_id. Instead, specify a filter object with as much detail as possible to uniquely identify the expense, e.g. by date, merchant, amount, and/or category). You can update ANY field of an expense:
+
 \`\`\`json
 {
   "action": "edit",
   "filter": { "date": "2024-07-19", "merchant": "Coffee Shop", "amount": 12.34 },
-  "fields_to_update": { "amount": 20.00, "merchant": "New Name", ... }
+  "fields_to_update": { 
+    "date": "2024-07-20",
+    "merchant_name": "New Merchant Name", 
+    "total_amount": 20.00,
+    "business_purpose": "New Category",
+    "business_purpose_id": "uuid-if-known"
+  }
 }
 \`\`\`
+
+You can update any combination of these fields:
+- date: Change the expense date
+- merchant_name: Change the merchant/store name  
+- total_amount: Change the expense amount
+- business_purpose: Change the business purpose category
+- business_purpose_id: Set the business purpose ID (if you know it)
+
+Examples of edit requests:
+- "Change the amount of my coffee expense from yesterday to $15.50"
+- "Update the merchant name for my lunch expense to 'New Restaurant'"
+- "Change the category of my travel expense to 'Business Travel'"
+- "Update the date of my software subscription to January 15th"
 
 For sending a receipt image or file to the user (IMPORTANT: Do NOT use an expense_id. Instead, specify a filter object with as much detail as possible to uniquely identify the expense, e.g. by date, merchant, amount, and/or category):
 \`\`\`json
@@ -325,6 +345,15 @@ For questions or general responses:
 \`\`\`
 
 Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). If the user's message is a reply to a previous expense summary or confirmation, extract the relevant details (date, merchant, amount, etc.) from the replied-to message and use them in your filter for actions like send_receipt or edit. Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.
+
+For edit requests, be smart about interpreting natural language:
+- "Change the amount to $25" → Look for the most recent expense or ask for more context
+- "Update the merchant name" → Look for the most recent expense with that amount/date
+- "Change the category to Travel" → Look for expenses that might be travel-related
+- "Fix the date to yesterday" → Look for recent expenses that might have wrong dates
+- "Update my coffee expense" → Look for coffee-related expenses in recent history
+
+When editing, always try to be specific about which expense you're targeting. If multiple expenses could match, ask the user to be more specific.
 
 For business purpose management:
 - If user asks to "add business purpose [name]" or "create category [name]", use add_business_purpose action
@@ -527,15 +556,52 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
               responseMessage = `❌ Multiple expenses match your description. 🧐\nPlease be more specific (e.g., include date, merchant, and amount).`
               break
             }
+            
+            // Prepare update fields
+            const updateFields: any = { ...extractedAction.fields_to_update }
+            
+            // Handle business purpose mapping if provided
+            if (updateFields.business_purpose && !updateFields.business_purpose_id && businessPurposes) {
+              const matchingPurpose = businessPurposes.find((p: any) => 
+                p.name.toLowerCase() === updateFields.business_purpose.toLowerCase()
+              )
+              if (matchingPurpose) {
+                updateFields.business_purpose_id = matchingPurpose.id
+              } else {
+                // If business purpose doesn't exist, remove it from update
+                delete updateFields.business_purpose
+                responseMessage = `⚠️ Business purpose "${updateFields.business_purpose}" not found. Available categories: ${availableCategories}`
+                break
+              }
+            }
+            
+            // Remove business_purpose field if we have business_purpose_id (to avoid conflicts)
+            if (updateFields.business_purpose_id) {
+              delete updateFields.business_purpose
+            }
+            
             // Unique match found
             const expenseId = matchExpenses[0].id
             const { error: editError } = await supabase
               .from('expenses')
-              .update(extractedAction.fields_to_update)
+              .update(updateFields)
               .eq('id', expenseId)
               .eq('user_id', userId)
             if (!editError) {
-              responseMessage = `✅ Expense updated successfully! ✏️`
+              // Build success message with updated fields
+              const updatedFields = Object.keys(updateFields).map(field => {
+                switch(field) {
+                  case 'date': return `📅 Date: ${updateFields[field]}`
+                  case 'merchant_name': return `🏪 Merchant: ${updateFields[field]}`
+                  case 'total_amount': return `💵 Amount: $${updateFields[field]}`
+                  case 'business_purpose_id': 
+                    const purpose = businessPurposes?.find((p: any) => p.id === updateFields[field])
+                    return `🏷️ Category: ${purpose?.name || 'Unknown'}`
+                  default: return `${field}: ${updateFields[field]}`
+                }
+              }).join('\n')
+              
+              responseMessage = `✅ Expense updated successfully! ✏️\n\n${updatedFields}`
               console.log('✅ Message API Debug - Expense updated:', extractedAction)
             } else {
               responseMessage = `❌ Failed to update expense. 😢\nReason: ${editError.message}`
