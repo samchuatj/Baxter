@@ -124,9 +124,23 @@ export async function POST(request: NextRequest) {
       
     console.log('🔍 [LINK_API] Token deletion result:', { deleteError })
 
-    // Skip welcome message for now to avoid Telegram API errors
-    // User can get welcome message by sending /start after linking
-    console.log('✅ [LINK_API] Skipping welcome message to avoid Telegram API errors - user can send /start to get welcome message')
+    // Send minimal welcome message to satisfy Telegram client expectations
+    try {
+      const bot = new TelegramBotService({ webhookMode: true })
+      const messageSent = await bot.sendMessage(
+        telegramId,
+        '✅ Account linked successfully! You can now use the bot for expense tracking.'
+      )
+      
+      if (!messageSent) {
+        console.log('⚠️ [LINK_API] Could not send welcome message - but linking was successful')
+      } else {
+        console.log('✅ [LINK_API] Welcome message sent successfully')
+      }
+    } catch (err) {
+      console.error('❌ [LINK_API] Failed to send welcome message:', err)
+      // Don't fail the linking process if welcome message fails
+    }
 
     console.log('✅ [LINK_API] Successfully linked accounts')
     return NextResponse.json({ success: true })
