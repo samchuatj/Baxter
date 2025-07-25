@@ -150,7 +150,7 @@ export class TelegramBotService {
       if (existingUser) {
         await this.bot.sendMessage(
           chatId,
-          '✅ You are already linked to your account! You can now use the bot to manage your expenses.'
+          '✅ You are already linked to your account! You can now use the bot to manage your expenses.\n\nHere\'s what I can help you with:\n\n• Track your expenses\n• Upload receipts as photos\n• Get summaries and reports\n\nJust send me a message or a photo of a receipt to get started!'
         )
         return
       }
@@ -495,9 +495,18 @@ ${magicLink}
     try {
       await this.bot.sendMessage(telegramId, message)
       return true
-    } catch (error) {
-      console.error('Error sending message to Telegram user:', error)
-      return false
+    } catch (error: any) {
+      // Handle specific Telegram API errors
+      if (error.response?.statusCode === 403) {
+        console.log(`⚠️ Cannot send message to user ${telegramId}: User has blocked the bot or hasn't started a conversation`)
+        return false
+      } else if (error.response?.statusCode === 400) {
+        console.log(`⚠️ Cannot send message to user ${telegramId}: ${error.response.body?.description || 'Bad request'}`)
+        return false
+      } else {
+        console.error('Error sending message to Telegram user:', error)
+        return false
+      }
     }
   }
 

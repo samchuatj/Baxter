@@ -105,15 +105,20 @@ export async function POST(request: NextRequest) {
       .delete()
       .eq('token', token)
 
-    // Send welcome message on Telegram
+    // Send welcome message on Telegram (optional - user can get this by sending /start)
     try {
       const bot = new TelegramBotService({ webhookMode: true })
-      await bot.sendMessage(
+      const messageSent = await bot.sendMessage(
         telegramId,
-        `👋 Welcome to Baxter!\n\nYour Telegram account is now linked. Here’s what I can help you with:\n\n• Track your expenses\n• Upload receipts as photos\n• Get summaries and reports\n\nJust send me a message or a photo of a receipt to get started!\n\nType /start at any time for help.`
+        `👋 Welcome to Baxter!\n\nYour Telegram account is now linked. Here's what I can help you with:\n\n• Track your expenses\n• Upload receipts as photos\n• Get summaries and reports\n\nJust send me a message or a photo of a receipt to get started!\n\nType /start at any time for help.`
       )
+      
+      if (!messageSent) {
+        console.log('⚠️ Could not send welcome message - user may need to start conversation with bot first')
+      }
     } catch (err) {
       console.error('Failed to send Telegram welcome message:', err)
+      // Don't fail the linking process if welcome message fails
     }
 
     console.log('✅ API Debug - Successfully linked accounts')
