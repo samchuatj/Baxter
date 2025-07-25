@@ -297,6 +297,11 @@ Examples of edit requests:
 - "Change the category of my travel expense to 'Business Travel'"
 - "Update the date of my software subscription to January 15th"
 
+Examples of replying to expense messages:
+- User replies "update the amount to 15" to a message showing "Amount: $25.3, Merchant: Grab, Date: 2025-07-25" → Use filter { amount: 25.3, merchant: "Grab", date: "2025-07-25" } and update { total_amount: 15 }
+- User replies "change the merchant to Starbucks" to a message showing "Coffee Shop, $12.50" → Use filter { merchant: "Coffee Shop", amount: 12.50 } and update { merchant_name: "Starbucks" }
+- User replies "that was actually business travel" to a message showing "Travel expense" → Use filter { business_purpose: "Travel" } and update { business_purpose: "Travel" }
+
 For sending a receipt image or file to the user (IMPORTANT: Do NOT use an expense_id. Instead, specify a filter object with as much detail as possible to uniquely identify the expense, e.g. by date, merchant, amount, and/or category):
 \`\`\`json
 {
@@ -344,16 +349,20 @@ For questions or general responses:
 }
 \`\`\`
 
-Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). If the user's message is a reply to a previous expense summary or confirmation, extract the relevant details (date, merchant, amount, etc.) from the replied-to message and use them in your filter for actions like send_receipt or edit. Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.
+Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). 
+
+CRITICAL: If the user's message is a reply to a previous message (repliedToMessage is provided), ALWAYS extract expense details from the replied-to message to identify which expense they want to edit. The replied-to message typically contains the expense details that the user wants to modify.
 
 For edit requests, be smart about interpreting natural language:
-- "Change the amount to $25" → Look for the most recent expense or ask for more context
-- "Update the merchant name" → Look for the most recent expense with that amount/date
-- "Change the category to Travel" → Look for expenses that might be travel-related
-- "Fix the date to yesterday" → Look for recent expenses that might have wrong dates
+- "Change the amount to $25" → If replying to an expense message, use those details + new amount
+- "Update the merchant name" → If replying to an expense message, use those details + new merchant
+- "Change the category to Travel" → If replying to an expense message, use those details + new category
+- "Fix the date to yesterday" → If replying to an expense message, use those details + new date
 - "Update my coffee expense" → Look for coffee-related expenses in recent history
 
-When editing, always try to be specific about which expense you're targeting. If multiple expenses could match, ask the user to be more specific.
+When the user replies to an expense message, they are almost always referring to that specific expense. Use the replied-to message details as your primary filter criteria.
+
+Never invent or use an expense_id. Always return a single JSON object describing the action to take. Do not ask for confirmation before creating an expense.
 
 For business purpose management:
 - If user asks to "add business purpose [name]" or "create category [name]", use add_business_purpose action

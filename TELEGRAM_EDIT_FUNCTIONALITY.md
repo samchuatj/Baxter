@@ -12,15 +12,22 @@ Users can send edit requests in plain English through Telegram. The LLM analyzes
 - Determine which fields should be changed
 - Extract the new values for those fields
 
-### 2. Smart Expense Identification
+### 2. Replied-to Message Context
+When users reply to a message containing expense details, the system:
+- Extracts expense information from the replied-to message
+- Uses those details as primary filter criteria
+- Combines with the user's edit request for precise identification
+
+### 3. Smart Expense Identification
 The system uses multiple criteria to find the correct expense:
 - **Date**: Specific dates, relative dates (yesterday, last week), or date ranges
 - **Merchant Name**: Exact matches or partial matches
 - **Amount**: Exact amounts or approximate amounts
 - **Business Purpose**: Category names or descriptions
 - **Context**: Recent expenses, specific time periods, or contextual clues
+- **Replied-to Message**: Expense details from the message being replied to
 
-### 3. Field Updates
+### 4. Field Updates
 Any expense field can be updated:
 - **Date**: Change when the expense occurred
 - **Merchant Name**: Update the store or service provider name
@@ -35,6 +42,23 @@ Any expense field can be updated:
 "Update the merchant name for my lunch expense to 'New Restaurant'"
 "Change the category of my travel expense to 'Business Travel'"
 "Update the date of my software subscription to January 15th"
+```
+
+### Reply-to-Message Edit Requests
+```
+User replies "update the amount to 15" to:
+"✓ Expense created! 🎉
+💵 Amount: $25.3
+🏪 Merchant: Grab
+📅 Date: 2025-07-25
+🏷️ Category: Travel"
+
+User replies "change the merchant to Starbucks" to:
+"📄 Receipt for: Coffee Shop - $12.50 (Food) - 2024-07-19"
+
+User replies "that was actually business travel" to:
+"📊 Your recent expenses:
+• Starbucks - $8.75 (Food) - 2024-07-20"
 ```
 
 ### Natural Language Corrections
