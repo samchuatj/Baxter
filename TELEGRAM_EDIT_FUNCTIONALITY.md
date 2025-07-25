@@ -18,7 +18,14 @@ When users reply to a message containing expense details, the system:
 - Uses those details as primary filter criteria
 - Combines with the user's edit request for precise identification
 
-### 3. Smart Expense Identification
+### 3. Chat History Context
+The system maintains and utilizes the last 10 messages as context:
+- **Conversation Flow**: Understands the natural progression of the conversation
+- **Pattern Recognition**: Identifies recurring behaviors and preferences
+- **Context Awareness**: Uses previous messages to disambiguate requests
+- **Temporal Context**: Understands when events occurred relative to each other
+
+### 4. Smart Expense Identification
 The system uses multiple criteria to find the correct expense:
 - **Date**: Specific dates, relative dates (yesterday, last week), or date ranges
 - **Merchant Name**: Exact matches or partial matches
@@ -27,7 +34,7 @@ The system uses multiple criteria to find the correct expense:
 - **Context**: Recent expenses, specific time periods, or contextual clues
 - **Replied-to Message**: Expense details from the message being replied to
 
-### 4. Field Updates
+### 5. Field Updates
 Any expense field can be updated:
 - **Date**: Change when the expense occurred
 - **Merchant Name**: Update the store or service provider name
@@ -80,6 +87,15 @@ User replies "that was actually business travel" to:
 "Change the amount to $25" (system looks for most recent expense)
 "Update the merchant name" (system looks for recent expense with similar amount/date)
 "Change the category to Travel" (system looks for travel-related expenses)
+```
+
+### Chat History Context Examples
+```
+Previous messages show expense creation → Edit that specific expense
+Recent expense list displayed → Reference specific items from the list
+Correction pattern in conversation → Understand user is fixing previous mistakes
+Business purpose changes → Update categories based on context
+Amount adjustment patterns → Recognize recurring value changes
 ```
 
 ## Technical Implementation

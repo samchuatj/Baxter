@@ -220,20 +220,40 @@ export async function POST(request: NextRequest) {
     try {
       const { data: chatMessages, error: chatLogError } = await supabase
         .from('telegram_messages')
-        .select('message, type, created_at')
+        .select('message, type, created_at, original_message')
         .eq('user_id', userId)
         .eq('telegram_id', telegramId)
         .order('created_at', { ascending: false })
         .limit(10)
       if (!chatLogError && chatMessages && chatMessages.length > 0) {
-        // Show most recent last
-        const chatLines = chatMessages.reverse().map((msg: any) => {
-          const time = new Date(msg.created_at).toLocaleString('en-US', { hour12: false })
-          return `[${time}] (${msg.type}) ${msg.message}`
+        // Show most recent last, with better formatting
+        const chatLines = chatMessages.reverse().map((msg: any, index: number) => {
+          const time = new Date(msg.created_at).toLocaleString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+          })
+          
+          // Determine if this is a user message or bot response
+          const isUserMessage = msg.type === 'text' || msg.type === 'image'
+          const prefix = isUserMessage ? '👤 User' : '🤖 Bot'
+          
+          // Use original_message for user messages, processed message for bot responses
+          const displayMessage = isUserMessage ? (msg.original_message || msg.message) : msg.message
+          
+          // Truncate very long messages
+          const truncatedMessage = displayMessage.length > 200 
+            ? displayMessage.substring(0, 200) + '...' 
+            : displayMessage
+          
+          return `${prefix} [${time}]: ${truncatedMessage}`
         })
         chatLog = chatLines.join('\n')
       }
     } catch (e) {
+      console.error('Error fetching chat log:', e)
       chatLog = ''
     }
 
@@ -247,6 +267,12 @@ export async function POST(request: NextRequest) {
 - Manage business purposes (add, remove, list, view)
 
 IMPORTANT: When you receive a receipt image, you MUST automatically create an expense using the "create" action. Do not just describe what you see - actually create the expense record. Only use "reply" action for general questions or when you cannot extract expense data.
+
+CONTEXT USAGE: Use the chat log to understand the conversation flow and user intent. Look for:
+- Previous expense creation messages that the user might want to edit
+- Recent expense summaries or lists that provide context
+- User's previous requests and your responses
+- Patterns in the user's behavior or preferences
 
 ${chatLog ? `CHAT LOG (last 10 messages):\n${chatLog}\n` : ''}${repliedToMessage ? `USER'S REPLIED-TO MESSAGE:\n${repliedToMessage}\n` : ''}USER'S RECENT EXPENSES:
 ${contextSummary}
