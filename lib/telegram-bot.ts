@@ -208,14 +208,7 @@ export class TelegramBotService {
         chatId,
         `👋 Hey there, and welcome to *Baxter Expense Manager*!
 
-I'm your AI-powered expense assistant that helps you:
-
-📸 *Upload receipts* - Just send me photos of your receipts and I'll extract all the details automatically
-📊 *Track spending* - Ask me about your expenses, get summaries, and see spending patterns
-💼 *Business categorization* - I'll help categorize your expenses for tax and business purposes
-📈 *Smart insights* - Get spending analysis and budget recommendations
-
-To get started, connect your Telegram account with your Baxter profile:
+We're excited to have you on board. To connect your Telegram account with your Baxter profile, just tap the magic link below:
 
 🔗 [Connect my account](${magicLink})
 
@@ -289,7 +282,17 @@ Let's get your expenses under control — together! 💼✨`,
       console.log(`🔍 [AUTH_CALLBACK] Sending confirmation message to chat ID: ${chatId}`)
       const messageSent = await this.sendMessage(
         chatId,
-        '🎉 Successfully linked! Your Telegram account is now connected to your Baxter account. You can now use the bot to manage your expenses.'
+        `🎉 Successfully linked! Your Telegram account is now connected to your Baxter account.
+
+Here's what you can do with *Baxter Expense Manager*:
+
+📸 *Upload receipts* — Send me photos of your receipts and I'll extract all the details automatically
+📊 *Track spending* — Ask me about your expenses, get summaries, and see spending patterns
+💼 *Business categorization* — I'll help categorize your expenses for tax and business purposes
+📈 *Smart insights* — Get spending analysis and budget recommendations
+
+Just send a message or a photo of a receipt to get started!`,
+        { parse_mode: 'Markdown' }
       )
       
       console.log(`🔍 [AUTH_CALLBACK] Confirmation message result: ${messageSent}`)
@@ -559,7 +562,7 @@ Let's get your expenses under control — together! 💼✨`,
   }
 
   // Method to send message to a Telegram user
-  public async sendMessage(telegramId: number, message: string): Promise<boolean> {
+  public async sendMessage(telegramId: number, message: string, options?: any): Promise<boolean> {
     console.log(`🔍 [SEND_MESSAGE] Attempting to send message to user ${telegramId}`)
     console.log(`🔍 [SEND_MESSAGE] Message preview: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`)
     console.log(`🔍 [SEND_MESSAGE] Bot instance: ${this.bot ? 'exists' : 'null'}`)
@@ -567,7 +570,7 @@ Let's get your expenses under control — together! 💼✨`,
     
     try {
       console.log(`🔍 [SEND_MESSAGE] Calling bot.sendMessage(${telegramId}, message)`)
-      const result = await this.bot.sendMessage(telegramId, message)
+      const result = await this.bot.sendMessage(telegramId, message, options)
       console.log(`✅ [SEND_MESSAGE] Successfully sent message to user ${telegramId}`)
       console.log(`🔍 [SEND_MESSAGE] Telegram API response:`, result)
       return true
