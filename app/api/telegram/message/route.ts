@@ -395,18 +395,20 @@ You can also filter by date range:
 - "export this month" → dateFrom: first day of current month, dateTo: last day of current month
 - "export last month" → dateFrom: first day of previous month, dateTo: last day of previous month
 - "export this year" → dateFrom: January 1st of current year, dateTo: December 31st of current year
-- "export this financial year" or "current financial year" → dateFrom: April 1st of current year, dateTo: March 31st of next year
-- "export last financial year" → dateFrom: April 1st of previous year, dateTo: March 31st of current year
+- "export this financial year" or "current financial year" → Calculate dynamically: if current month is Jan-Mar, use previous year's April 1st to current year's March 31st; if current month is Apr-Dec, use current year's April 1st to next year's March 31st
+- "export last financial year" → Calculate dynamically: if current month is Jan-Mar, use two years ago's April 1st to previous year's March 31st; if current month is Apr-Dec, use previous year's April 1st to current year's March 31st
 - "export from 2024-01-01 to 2024-12-31" → specific date range
 
-IMPORTANT: Financial year runs from April 1st to March 31st of the following year.
+IMPORTANT: Financial year runs from April 1st to March 31st of the following year. Calculate the current financial year based on today's date.
 
-Examples:
+Examples (use current date for calculations):
 - "Export my expenses as PDF" → { "action": "export", "format": "pdf" }
-- "Send me a CSV of this month's expenses" → { "action": "export", "format": "csv", "dateFrom": "2024-07-01", "dateTo": "2024-07-31" }
-- "Excel export of last month" → { "action": "export", "format": "excel", "dateFrom": "2024-06-01", "dateTo": "2024-06-30" }
-- "Export as excel for current financial year" → { "action": "export", "format": "excel", "dateFrom": "2024-04-01", "dateTo": "2025-03-31" }
-- "PDF export of this financial year" → { "action": "export", "format": "pdf", "dateFrom": "2024-04-01", "dateTo": "2025-03-31" }
+- "Send me a CSV of this month's expenses" → { "action": "export", "format": "csv", "dateFrom": "2025-07-01", "dateTo": "2025-07-31" }
+- "Excel export of last month" → { "action": "export", "format": "excel", "dateFrom": "2025-06-01", "dateTo": "2025-06-30" }
+- "Export as excel for current financial year" → { "action": "export", "format": "excel", "dateFrom": "2025-04-01", "dateTo": "2026-03-31" }
+- "PDF export of this financial year" → { "action": "export", "format": "pdf", "dateFrom": "2025-04-01", "dateTo": "2026-03-31" }
+
+IMPORTANT: When no expenses are found, always include the date range that was searched in the error message for clarity.
 
 Use your judgment to decide the best action. If the user wants to edit an expense or send a receipt, use the appropriate action and specify a filter object with as much detail as possible to uniquely identify the expense (date, merchant, amount, category, etc). 
 

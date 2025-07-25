@@ -96,8 +96,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (!expenses || expenses.length === 0) {
+      const dateRangeText = dateFrom && dateTo ? ` from ${dateFrom} to ${dateTo}` : ' for all time'
       return NextResponse.json(
-        { success: false, error: 'No expenses found for the specified criteria' },
+        { success: false, error: `No expenses found${dateRangeText}` },
         { status: 404 }
       )
     }
