@@ -130,8 +130,13 @@ export class TelegramBotService {
   }
 
   private async handleStartCommand(chatId: number, telegramUser: TelegramUser) {
+    console.log(`🔍 [START_COMMAND] Starting /start command handling`)
+    console.log(`🔍 [START_COMMAND] Chat ID: ${chatId}`)
+    console.log(`🔍 [START_COMMAND] Telegram user:`, telegramUser)
+    
     try {
       if (!isSupabaseConfigured) {
+        console.log(`❌ [START_COMMAND] Supabase not configured`)
         await this.bot.sendMessage(
           chatId,
           '❌ Bot is not properly configured. Please contact the administrator.'
@@ -140,14 +145,21 @@ export class TelegramBotService {
       }
 
       // Check if user is already linked
+      console.log(`🔍 [START_COMMAND] Checking if user ${telegramUser.id} is already linked`)
       const supabase = createSupabaseClient()
-      const { data: existingUser } = await supabase
+      const { data: existingUser, error: existingError } = await supabase
         .from('telegram_users')
         .select('user_id')
         .eq('telegram_id', telegramUser.id)
         .single()
 
+      console.log(`🔍 [START_COMMAND] Existing user check:`, { 
+        existingUser: existingUser ? { ...existingUser, user_id: existingUser.user_id ? `${existingUser.user_id.substring(0, 8)}...` : null } : null, 
+        existingError 
+      })
+
       if (existingUser) {
+        console.log(`✅ [START_COMMAND] User ${telegramUser.id} is already linked to user ${existingUser.user_id ? `${existingUser.user_id.substring(0, 8)}...` : null}`)
         await this.bot.sendMessage(
           chatId,
           '✅ You are already linked to your account! You can now use the bot to manage your expenses.\n\nHere\'s what I can help you with:\n\n• Track your expenses\n• Upload receipts as photos\n• Get summaries and reports\n\nJust send me a message or a photo of a receipt to get started!\n\n💡 Tip: You can also send me photos of receipts to automatically extract expense information.'
@@ -156,11 +168,17 @@ export class TelegramBotService {
       }
 
       // Generate a unique auth token
+      console.log(`🔍 [START_COMMAND] Generating auth token for user ${telegramUser.id}`)
       const authToken = this.generateAuthToken()
       const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/telegram?token=${authToken}&telegram_id=${telegramUser.id}`
+      
+      console.log(`🔍 [START_COMMAND] Generated magic link: ${magicLink}`)
 
       // Store pending authentication in database
-      console.log('🔍 Bot Debug - Storing token in database:', { token: authToken, telegram_id: telegramUser.id })
+      console.log('🔍 [START_COMMAND] Storing token in database:', { 
+        token: authToken ? `${authToken.substring(0, 8)}...` : null, 
+        telegram_id: telegramUser.id 
+      })
       const { error: insertError } = await supabase
         .from('pending_auth')
         .insert({
@@ -168,10 +186,10 @@ export class TelegramBotService {
           telegram_id: telegramUser.id
         })
 
-      console.log('🔍 Bot Debug - Insert result:', { insertError })
+      console.log('🔍 [START_COMMAND] Insert result:', { insertError })
 
       if (insertError) {
-        console.error('❌ Bot Debug - Error storing pending auth:', insertError)
+        console.error('❌ [START_COMMAND] Error storing pending auth:', insertError)
         await this.bot.sendMessage(
           chatId,
           '❌ Sorry, there was an error generating your authentication link. Please try again.'
@@ -179,12 +197,13 @@ export class TelegramBotService {
         return
       }
 
-      console.log('✅ Bot Debug - Token stored successfully')
+      console.log('✅ [START_COMMAND] Token stored successfully')
 
       // Clean up old pending auth requests
+      console.log('🔍 [START_COMMAND] Cleaning up old pending auth requests')
       await this.cleanupPendingAuth()
 
-      console.log('DEBUG: Sending single-link /start message (latest code)')
+      console.log('🔍 [START_COMMAND] Sending magic link message to user')
       await this.bot.sendMessage(
         chatId,
         `🔐 Welcome to Baxter Expense Manager! [TEST-UNIQUE-STRING-123]
@@ -196,47 +215,86 @@ ${magicLink}
 ⚠️ Important: This link will expire in 10 minutes for security reasons. You can sign in or sign up after clicking the link.`
       )
 
-    } catch (error) {
-      console.error('Error handling start command:', error)
-      await this.bot.sendMessage(
-        chatId,
-        '❌ Sorry, there was an error processing your request. Please try again later.'
-      )
+    } catch (error: any) {
+      console.error('❌ [START_COMMAND] Error handling start command:', error)
+      console.error(`🔍 [START_COMMAND] Error type: ${error.constructor.name}`)
+      console.error(`🔍 [START_COMMAND] Error message: ${error.message}`)
+      console.error(`🔍 [START_COMMAND] Error stack: ${error.stack}`)
+      
+      try {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Sorry, there was an error processing your request. Please try again later.'
+        )
+      } catch (sendError) {
+        console.error('❌ [START_COMMAND] Failed to send error message to user:', sendError)
+      }
     }
   }
 
   private async handleAuthCallback(query: TelegramBot.CallbackQuery) {
+    console.log(`🔍 [AUTH_CALLBACK] Starting auth callback handling`)
+    console.log(`🔍 [AUTH_CALLBACK] Query ID: ${query.id}`)
+    console.log(`🔍 [AUTH_CALLBACK] Chat ID: ${query.message?.chat.id}`)
+    console.log(`🔍 [AUTH_CALLBACK] User ID: ${query.from?.id}`)
+    console.log(`🔍 [AUTH_CALLBACK] Callback data: ${query.data}`)
+    
     try {
       const chatId = query.message!.chat.id
       const authToken = query.data!.replace('auth_', '')
+      
+      console.log(`🔍 [AUTH_CALLBACK] Extracted chat ID: ${chatId}`)
+      console.log(`🔍 [AUTH_CALLBACK] Extracted auth token: ${authToken}`)
 
       const supabase = createSupabaseClient()
-      const { data: pending } = await supabase
+      console.log(`🔍 [AUTH_CALLBACK] Looking up pending auth for token: ${authToken}`)
+      
+      const { data: pending, error: pendingError } = await supabase
         .from('pending_auth')
         .select('*')
         .eq('token', authToken)
         .single()
 
+      console.log(`🔍 [AUTH_CALLBACK] Pending auth lookup result:`, { pending, pendingError })
+
       if (!pending) {
+        console.log(`❌ [AUTH_CALLBACK] No pending auth found for token: ${authToken}`)
         await this.bot.answerCallbackQuery(query.id!, { text: '❌ Authentication link expired or invalid' })
         return
       }
 
+      console.log(`✅ [AUTH_CALLBACK] Found pending auth, removing from database`)
+      
       // Remove from pending auth
-      await supabase
+      const { error: deleteError } = await supabase
         .from('pending_auth')
         .delete()
         .eq('token', authToken)
+        
+      console.log(`🔍 [AUTH_CALLBACK] Delete result:`, { deleteError })
 
+      console.log(`🔍 [AUTH_CALLBACK] Answering callback query`)
       await this.bot.answerCallbackQuery(query.id!, { text: '✅ Authentication successful!' })
-      await this.bot.sendMessage(
+      
+      console.log(`🔍 [AUTH_CALLBACK] Sending confirmation message to chat ID: ${chatId}`)
+      const messageSent = await this.sendMessage(
         chatId,
         '🎉 Successfully linked! Your Telegram account is now connected to your Baxter account. You can now use the bot to manage your expenses.'
       )
+      
+      console.log(`🔍 [AUTH_CALLBACK] Confirmation message result: ${messageSent}`)
 
-    } catch (error) {
-      console.error('Error handling auth callback:', error)
-      await this.bot.answerCallbackQuery(query.id!, { text: '❌ Authentication failed' })
+    } catch (error: any) {
+      console.error(`❌ [AUTH_CALLBACK] Error handling auth callback:`, error)
+      console.error(`🔍 [AUTH_CALLBACK] Error type: ${error.constructor.name}`)
+      console.error(`🔍 [AUTH_CALLBACK] Error message: ${error.message}`)
+      console.error(`🔍 [AUTH_CALLBACK] Error stack: ${error.stack}`)
+      
+      try {
+        await this.bot.answerCallbackQuery(query.id!, { text: '❌ Authentication failed' })
+      } catch (answerError) {
+        console.error(`❌ [AUTH_CALLBACK] Failed to answer callback query:`, answerError)
+      }
     }
   }
 
@@ -492,21 +550,48 @@ ${magicLink}
 
   // Method to send message to a Telegram user
   public async sendMessage(telegramId: number, message: string): Promise<boolean> {
+    console.log(`🔍 [SEND_MESSAGE] Attempting to send message to user ${telegramId}`)
+    console.log(`🔍 [SEND_MESSAGE] Message preview: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`)
+    console.log(`🔍 [SEND_MESSAGE] Bot instance: ${this.bot ? 'exists' : 'null'}`)
+    console.log(`🔍 [SEND_MESSAGE] Webhook mode: ${this.isWebhookMode}`)
+    
     try {
-      await this.bot.sendMessage(telegramId, message)
+      console.log(`🔍 [SEND_MESSAGE] Calling bot.sendMessage(${telegramId}, message)`)
+      const result = await this.bot.sendMessage(telegramId, message)
+      console.log(`✅ [SEND_MESSAGE] Successfully sent message to user ${telegramId}`)
+      console.log(`🔍 [SEND_MESSAGE] Telegram API response:`, result)
       return true
     } catch (error: any) {
+      console.error(`❌ [SEND_MESSAGE] Failed to send message to user ${telegramId}`)
+      console.error(`🔍 [SEND_MESSAGE] Error type: ${error.constructor.name}`)
+      console.error(`🔍 [SEND_MESSAGE] Error message: ${error.message}`)
+      console.error(`🔍 [SEND_MESSAGE] Error stack: ${error.stack}`)
+      
       // Handle specific Telegram API errors
-      if (error.response?.statusCode === 403) {
-        console.log(`⚠️ Cannot send message to user ${telegramId}: User has blocked the bot or hasn't started a conversation`)
-        return false
-      } else if (error.response?.statusCode === 400) {
-        console.log(`⚠️ Cannot send message to user ${telegramId}: ${error.response.body?.description || 'Bad request'}`)
-        return false
-      } else {
-        console.error('Error sending message to Telegram user:', error)
-        return false
+      if (error.response) {
+        console.error(`🔍 [SEND_MESSAGE] HTTP Status: ${error.response.statusCode}`)
+        console.error(`🔍 [SEND_MESSAGE] Response body:`, error.response.body)
+        console.error(`🔍 [SEND_MESSAGE] Response headers:`, error.response.headers)
+        
+        if (error.response.statusCode === 403) {
+          console.log(`⚠️ [SEND_MESSAGE] Cannot send message to user ${telegramId}: User has blocked the bot or hasn't started a conversation`)
+          return false
+        } else if (error.response.statusCode === 400) {
+          console.log(`⚠️ [SEND_MESSAGE] Cannot send message to user ${telegramId}: ${error.response.body?.description || 'Bad request'}`)
+          return false
+        } else if (error.response.statusCode === 404) {
+          console.log(`⚠️ [SEND_MESSAGE] Cannot send message to user ${telegramId}: User not found (404)`)
+          return false
+        }
       }
+      
+      // Log additional error properties
+      if (error.code) console.error(`🔍 [SEND_MESSAGE] Error code: ${error.code}`)
+      if (error.description) console.error(`🔍 [SEND_MESSAGE] Error description: ${error.description}`)
+      if (error.parameters) console.error(`🔍 [SEND_MESSAGE] Error parameters:`, error.parameters)
+      
+      console.error(`❌ [SEND_MESSAGE] Unhandled error sending message to Telegram user ${telegramId}:`, error)
+      return false
     }
   }
 
