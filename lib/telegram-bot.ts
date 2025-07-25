@@ -208,7 +208,14 @@ export class TelegramBotService {
         chatId,
         `👋 Hey there, and welcome to *Baxter Expense Manager*!
 
-We're excited to have you on board. To connect your Telegram account with your Baxter profile, just tap the magic link below:
+I'm your AI-powered expense assistant that helps you:
+
+📸 *Upload receipts* - Just send me photos of your receipts and I'll extract all the details automatically
+📊 *Track spending* - Ask me about your expenses, get summaries, and see spending patterns
+💼 *Business categorization* - I'll help categorize your expenses for tax and business purposes
+📈 *Smart insights* - Get spending analysis and budget recommendations
+
+To get started, connect your Telegram account with your Baxter profile:
 
 🔗 [Connect my account](${magicLink})
 
