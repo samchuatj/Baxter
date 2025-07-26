@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
         
         return NextResponse.json({
           success: true,
-          message: `✅ Your expense report has been sent! 📊\n\n📅 Period: ${dateRange}\n💰 Total: $${totalAmount.toFixed(2)}\n📋 Transactions: ${exportData.length}\n📁 Format: ${format.toUpperCase()}`
+          message: null // Don't send additional message since file caption contains all info
         })
       } else {
         console.error('❌ Export API Debug - Failed to send file via Telegram')

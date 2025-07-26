@@ -371,7 +371,10 @@ Just send a message or a photo of a receipt to get started!`,
       if (response.ok) {
         const result = await response.json()
         console.log('📝 Bot Debug - API response:', result)
-        await this.bot.sendMessage(chatId, result.message)
+        // Only send a message if there is one (for exports, message can be null)
+        if (result.message) {
+          await this.bot.sendMessage(chatId, result.message)
+        }
       } else {
         const errorText = await response.text()
         console.error('📝 Bot Debug - API error response:', errorText)

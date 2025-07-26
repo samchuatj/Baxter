@@ -1023,7 +1023,7 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
 
               if (exportResponse.ok) {
                 const result = await exportResponse.json()
-                responseMessage = result.message || '✅ Export completed successfully!'
+                responseMessage = result.message // Can be null for successful exports
                 console.log('✅ Message API Debug - Export successful:', result)
               } else {
                 const errorResult = await exportResponse.json()
