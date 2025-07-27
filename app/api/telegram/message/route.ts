@@ -197,19 +197,19 @@ export async function POST(request: NextRequest) {
       // Show all transactions for "all" requests, otherwise show recent ones
       const transactionsToShow = contextScope === 'all' ? userExpenses : userExpenses.slice(0, 5)
       
-      // Format each transaction line with emojis, no UUID
+      // Format each transaction line with emojis and bullet points for better readability
       contextSummary = `💸 *${contextScope.toUpperCase()} EXPENSES* (${userExpenses.length} transactions):\n\n` +
         `🧾 *Total*: $${totalSpent.toFixed(2)} | 📊 *Average*: $${avgSpent.toFixed(2)}\n\n` +
         `${contextScope === 'all' ? '📜 *All Transactions*:' : '🕑 *Recent Transactions*:'}\n` +
         transactionsToShow.map((exp: any) => {
           const cat = exp.business_purpose || 'Uncategorized'
           const emoji = categoryEmojis[cat] || '💵'
-          return `${emoji} ${exp.date}: $${exp.total_amount} at ${exp.merchant_name}${exp.business_purpose ? ` (${exp.business_purpose})` : ''}`
+          return `• ${emoji} ${exp.date}: $${exp.total_amount} at ${exp.merchant_name}${exp.business_purpose ? ` (${exp.business_purpose})` : ''}`
         }).join('\n') +
         (Object.keys(purposeTotals).length > 1 ? `\n\n📂 *Spending by Category:*\n` +
           Object.entries(purposeTotals).map(([purpose, total]: [string, any]) => {
             const emoji = categoryEmojis[purpose] || '💵'
-            return `${emoji} ${purpose}: $${total.toFixed(2)}`
+            return `• ${emoji} ${purpose}: $${total.toFixed(2)}`
           }).join('\n') : '')
     }
 
