@@ -153,6 +153,11 @@ export class TelegramBotService {
     this.bot.on('new_chat_members', async (msg) => {
       await this.handleBotAddedToGroup(msg)
     })
+
+    // Group created with bot handler
+    this.bot.on('group_chat_created', async (msg) => {
+      await this.handleBotAddedToGroup(msg)
+    })
   }
 
   // Public method to set up handlers for webhook mode
@@ -1441,13 +1446,14 @@ ${accessLink}
         return
       }
 
-      // Check if the bot was actually added (not just other members)
+      // Check if this is a group created with bot or bot was added
+      const isGroupCreated = msg.group_chat_created === true
       const botWasAdded = msg.new_chat_members?.some(member => 
         member.is_bot === true
       )
 
-      if (!botWasAdded) {
-        console.log('📝 [BOT_ADDED] Bot was not added, other members were added')
+      if (!isGroupCreated && !botWasAdded) {
+        console.log('📝 [BOT_ADDED] Neither group created nor bot added, skipping intro message')
         return
       }
 
