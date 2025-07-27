@@ -212,4 +212,99 @@ export async function getUserGroupChats(userId: string): Promise<GroupChat[]> {
     console.error('Error getting user group chats:', error)
     return []
   }
+}
+
+// Get expenses for PA viewing (read-only access)
+export async function getPAExpenses(userId: string, limit: number = 50): Promise<any[]> {
+  try {
+    const supabase = createServiceRoleClient()
+    
+    const { data: expenses, error } = await supabase
+      .from('expenses')
+      .select(`
+        id,
+        date,
+        merchant_name,
+        total_amount,
+        business_purpose,
+        business_purpose_id,
+        receipt_filename,
+        created_at
+      `)
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      console.error('Error fetching PA expenses:', error)
+      return []
+    }
+
+    return expenses || []
+  } catch (error) {
+    console.error('Error fetching PA expenses:', error)
+    return []
+  }
+}
+
+// Get expense summary for PA dashboard
+export async function getPAExpenseSummary(userId: string): Promise<any> {
+  try {
+    const supabase = createServiceRoleClient()
+    
+    // Get total expenses
+    const { data: totalData, error: totalError } = await supabase
+      .from('expenses')
+      .select('total_amount')
+      .eq('user_id', userId)
+
+    if (totalError) {
+      console.error('Error fetching PA expense summary:', totalError)
+      return { total: 0, count: 0, average: 0 }
+    }
+
+    const expenses = totalData || []
+    const total = expenses.reduce((sum, exp) => sum + exp.total_amount, 0)
+    const count = expenses.length
+    const average = count > 0 ? total / count : 0
+
+    // Get expenses by business purpose
+    const { data: purposeData, error: purposeError } = await supabase
+      .from('expenses')
+      .select(`
+        total_amount,
+        business_purpose
+      `)
+      .eq('user_id', userId)
+
+    if (purposeError) {
+      console.error('Error fetching PA purpose summary:', purposeError)
+      return { total, count, average, byPurpose: {} }
+    }
+
+    const byPurpose = (purposeData || []).reduce((acc, exp) => {
+      const purpose = exp.business_purpose || 'Uncategorized'
+      acc[purpose] = (acc[purpose] || 0) + exp.total_amount
+      return acc
+    }, {})
+
+    return { total, count, average, byPurpose }
+  } catch (error) {
+    console.error('Error fetching PA expense summary:', error)
+    return { total: 0, count: 0, average: 0, byPurpose: {} }
+  }
+}
+
+// Generate magic link for PA web access
+export async function generatePAMagicLink(userId: string, paTelegramId: number): Promise<string | null> {
+  try {
+    const token = await createPAToken(userId, paTelegramId)
+    if (!token) return null
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    return `${baseUrl}/pa/access?token=${token}`
+  } catch (error) {
+    console.error('Error generating PA magic link:', error)
+    return null
+  }
 } 

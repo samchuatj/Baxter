@@ -126,6 +126,79 @@ export class TelegramBotService {
       await this.handleListGroupsCommand(chatId, telegramUser)
     })
 
+    // Handle /add-pa command
+    this.bot.onText(/\/add-pa (.+)/, async (msg: TelegramBot.Message, match: RegExpExecArray | null) => {
+      const chatId = msg.chat.id
+      const telegramUser: TelegramUser = {
+        id: msg.from!.id,
+        username: msg.from!.username,
+        first_name: msg.from!.first_name,
+        last_name: msg.from!.last_name,
+      }
+
+      if (match && match[1]) {
+        await this.handleAddPACommand(chatId, telegramUser, match[1].trim())
+      } else {
+        await this.bot.sendMessage(chatId, '❌ Please specify a username: /add-pa @username')
+      }
+    })
+
+    // Handle /remove-pa command
+    this.bot.onText(/\/remove-pa (.+)/, async (msg: TelegramBot.Message, match: RegExpExecArray | null) => {
+      const chatId = msg.chat.id
+      const telegramUser: TelegramUser = {
+        id: msg.from!.id,
+        username: msg.from!.username,
+        first_name: msg.from!.first_name,
+        last_name: msg.from!.last_name,
+      }
+
+      if (match && match[1]) {
+        await this.handleRemovePACommand(chatId, telegramUser, match[1].trim())
+      } else {
+        await this.bot.sendMessage(chatId, '❌ Please specify a username: /remove-pa @username')
+      }
+    })
+
+    // Handle /list-pas command
+    this.bot.onText(/\/list-pas/, async (msg: TelegramBot.Message) => {
+      const chatId = msg.chat.id
+      const telegramUser: TelegramUser = {
+        id: msg.from!.id,
+        username: msg.from!.username,
+        first_name: msg.from!.first_name,
+        last_name: msg.from!.last_name,
+      }
+
+      await this.handleListPAsCommand(chatId, telegramUser)
+    })
+
+    // Handle /help command
+    this.bot.onText(/\/help/, async (msg: TelegramBot.Message) => {
+      const chatId = msg.chat.id
+      const telegramUser: TelegramUser = {
+        id: msg.from!.id,
+        username: msg.from!.username,
+        first_name: msg.from!.first_name,
+        last_name: msg.from!.last_name,
+      }
+
+      await this.handleHelpCommand(chatId, telegramUser)
+    })
+
+    // Handle /web-access command
+    this.bot.onText(/\/web-access/, async (msg: TelegramBot.Message) => {
+      const chatId = msg.chat.id
+      const telegramUser: TelegramUser = {
+        id: msg.from!.id,
+        username: msg.from!.username,
+        first_name: msg.from!.first_name,
+        last_name: msg.from!.last_name,
+      }
+
+      await this.handleWebAccessCommand(chatId, telegramUser)
+    })
+
     // Handle text messages
     this.bot.on('message', async (msg: TelegramBot.Message) => {
       if (msg.text && !msg.text.startsWith('/')) {
@@ -871,5 +944,381 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
   public stop() {
     this.bot.stopPolling()
     console.log('🤖 Telegram bot stopped')
+  }
+
+  private async handleAddPACommand(chatId: number, telegramUser: TelegramUser, username: string) {
+    console.log(`🔍 [ADD_PA_COMMAND] Starting /add-pa command handling`)
+    console.log(`🔍 [ADD_PA_COMMAND] Chat ID: ${chatId}`)
+    console.log(`🔍 [ADD_PA_COMMAND] Telegram user:`, telegramUser)
+    console.log(`🔍 [ADD_PA_COMMAND] Username: ${username}`)
+    
+    try {
+      if (!isSupabaseConfigured) {
+        console.log(`❌ [ADD_PA_COMMAND] Supabase not configured`)
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Bot is not properly configured. Please contact the administrator.'
+        )
+        return
+      }
+
+      // Remove @ symbol if present
+      const cleanUsername = username.startsWith('@') ? username.slice(1) : username
+
+      // Check if user is linked to a Baxter account
+      const supabase = createSupabaseClient()
+      const { data: linkedUser, error: linkError } = await supabase
+        .from('telegram_users')
+        .select('user_id')
+        .eq('telegram_id', telegramUser.id)
+        .single()
+
+      if (linkError || !linkedUser) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ You need to link your Telegram account to your Baxter account first. Send /start to me in a private chat to get started.'
+        )
+        return
+      }
+
+      // Check if this is a group chat
+      if (chatId > 0) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This command can only be used in group chats. Please add me to a group and try again.'
+        )
+        return
+      }
+
+      // Check if this group is registered
+      const { data: groupChat, error: groupError } = await supabase
+        .from('group_chats')
+        .select('*')
+        .eq('chat_id', chatId)
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .single()
+
+      if (groupError || !groupChat) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This group chat is not registered for PA management. Send /register to register it first.'
+        )
+        return
+      }
+
+      // TODO: Get the PA's Telegram ID from username
+      // For now, we'll need to implement this functionality
+      // This would require the PA to have interacted with the bot first
+      
+      await this.bot.sendMessage(
+        chatId,
+        `🔄 **Adding PA: @${cleanUsername}**\n\nThis feature is coming soon! The PA will need to:\n1. Send /start to the bot in a private chat\n2. Link their Telegram account to their Baxter account\n3. Then you can add them using this command.`
+      )
+
+    } catch (error: any) {
+      console.error('❌ [ADD_PA_COMMAND] Error handling add PA command:', error)
+      await this.bot.sendMessage(
+        chatId,
+        '❌ Sorry, there was an error processing your request. Please try again later.'
+      )
+    }
+  }
+
+  private async handleRemovePACommand(chatId: number, telegramUser: TelegramUser, username: string) {
+    console.log(`🔍 [REMOVE_PA_COMMAND] Starting /remove-pa command handling`)
+    console.log(`🔍 [REMOVE_PA_COMMAND] Chat ID: ${chatId}`)
+    console.log(`🔍 [REMOVE_PA_COMMAND] Telegram user:`, telegramUser)
+    console.log(`🔍 [REMOVE_PA_COMMAND] Username: ${username}`)
+    
+    try {
+      if (!isSupabaseConfigured) {
+        console.log(`❌ [REMOVE_PA_COMMAND] Supabase not configured`)
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Bot is not properly configured. Please contact the administrator.'
+        )
+        return
+      }
+
+      // Remove @ symbol if present
+      const cleanUsername = username.startsWith('@') ? username.slice(1) : username
+
+      // Check if user is linked to a Baxter account
+      const supabase = createSupabaseClient()
+      const { data: linkedUser, error: linkError } = await supabase
+        .from('telegram_users')
+        .select('user_id')
+        .eq('telegram_id', telegramUser.id)
+        .single()
+
+      if (linkError || !linkedUser) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ You need to link your Telegram account to your Baxter account first. Send /start to me in a private chat to get started.'
+        )
+        return
+      }
+
+      // Check if this is a group chat
+      if (chatId > 0) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This command can only be used in group chats. Please add me to a group and try again.'
+        )
+        return
+      }
+
+      // Check if this group is registered
+      const { data: groupChat, error: groupError } = await supabase
+        .from('group_chats')
+        .select('*')
+        .eq('chat_id', chatId)
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .single()
+
+      if (groupError || !groupChat) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This group chat is not registered for PA management. Send /register to register it first.'
+        )
+        return
+      }
+
+      await this.bot.sendMessage(
+        chatId,
+        `🔄 **Removing PA: @${cleanUsername}**\n\nThis feature is coming soon!`
+      )
+
+    } catch (error: any) {
+      console.error('❌ [REMOVE_PA_COMMAND] Error handling remove PA command:', error)
+      await this.bot.sendMessage(
+        chatId,
+        '❌ Sorry, there was an error processing your request. Please try again later.'
+      )
+    }
+  }
+
+  private async handleListPAsCommand(chatId: number, telegramUser: TelegramUser) {
+    console.log(`🔍 [LIST_PAS_COMMAND] Starting /list-pas command handling`)
+    console.log(`🔍 [LIST_PAS_COMMAND] Chat ID: ${chatId}`)
+    console.log(`🔍 [LIST_PAS_COMMAND] Telegram user:`, telegramUser)
+    
+    try {
+      if (!isSupabaseConfigured) {
+        console.log(`❌ [LIST_PAS_COMMAND] Supabase not configured`)
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Bot is not properly configured. Please contact the administrator.'
+        )
+        return
+      }
+
+      // Check if user is linked to a Baxter account
+      const supabase = createSupabaseClient()
+      const { data: linkedUser, error: linkError } = await supabase
+        .from('telegram_users')
+        .select('user_id')
+        .eq('telegram_id', telegramUser.id)
+        .single()
+
+      if (linkError || !linkedUser) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ You need to link your Telegram account to your Baxter account first. Send /start to me in a private chat to get started.'
+        )
+        return
+      }
+
+      // Check if this is a group chat
+      if (chatId > 0) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This command can only be used in group chats. Please add me to a group and try again.'
+        )
+        return
+      }
+
+      // Check if this group is registered
+      const { data: groupChat, error: groupError } = await supabase
+        .from('group_chats')
+        .select('*')
+        .eq('chat_id', chatId)
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .single()
+
+      if (groupError || !groupChat) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This group chat is not registered for PA management. Send /register to register it first.'
+        )
+        return
+      }
+
+      // TODO: Get PAs for this group
+      // For now, show a placeholder message
+      await this.bot.sendMessage(
+        chatId,
+        `📋 **PAs in this Group**\n\nThis feature is coming soon! You'll be able to see all PAs assigned to this group.`
+      )
+
+    } catch (error: any) {
+      console.error('❌ [LIST_PAS_COMMAND] Error handling list PAs command:', error)
+      await this.bot.sendMessage(
+        chatId,
+        '❌ Sorry, there was an error processing your request. Please try again later.'
+      )
+    }
+  }
+
+  private async handleHelpCommand(chatId: number, telegramUser: TelegramUser) {
+    console.log(`🔍 [HELP_COMMAND] Starting /help command handling`)
+    console.log(`🔍 [HELP_COMMAND] Chat ID: ${chatId}`)
+    console.log(`🔍 [HELP_COMMAND] Telegram user:`, telegramUser)
+    
+    try {
+      const helpMessage = `🤖 **Baxter Expense Manager - Available Commands**
+
+**Group Management:**
+• /register - Register this group chat for PA management
+• /list-groups - List all your registered group chats
+
+**PA Management (Coming Soon):**
+• /add-pa @username - Add a PA to this group
+• /remove-pa @username - Remove a PA from this group
+• /list-pas - List all PAs in this group
+
+**PA Web Access:**
+• /web-access - Get a link to view expenses in web browser
+
+**General:**
+• /help - Show this help message
+
+**Expense Management:**
+• Send photos of receipts - I'll automatically extract expense details
+• Send text messages - Ask about your expenses, get summaries, etc.
+
+💡 **Tip:** PAs can help manage your expenses by sending receipts and messages in this group!`
+
+      await this.bot.sendMessage(
+        chatId,
+        helpMessage,
+        { parse_mode: 'Markdown' }
+      )
+
+    } catch (error: any) {
+      console.error('❌ [HELP_COMMAND] Error handling help command:', error)
+      await this.bot.sendMessage(
+        chatId,
+        '❌ Sorry, there was an error processing your request. Please try again later.'
+      )
+    }
+  }
+
+  private async handleWebAccessCommand(chatId: number, telegramUser: TelegramUser) {
+    console.log(`🔍 [WEB_ACCESS_COMMAND] Starting /web-access command handling`)
+    console.log(`🔍 [WEB_ACCESS_COMMAND] Chat ID: ${chatId}`)
+    console.log(`🔍 [WEB_ACCESS_COMMAND] Telegram user:`, telegramUser)
+    
+    try {
+      if (!isSupabaseConfigured) {
+        console.log(`❌ [WEB_ACCESS_COMMAND] Supabase not configured`)
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Bot is not properly configured. Please contact the administrator.'
+        )
+        return
+      }
+
+      // Check if user is linked to a Baxter account
+      const supabase = createSupabaseClient()
+      const { data: linkedUser, error: linkError } = await supabase
+        .from('telegram_users')
+        .select('user_id')
+        .eq('telegram_id', telegramUser.id)
+        .single()
+
+      if (linkError || !linkedUser) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ You need to link your Telegram account to your Baxter account first. Send /start to me in a private chat to get started.'
+        )
+        return
+      }
+
+      // Check if this is a group chat
+      if (chatId > 0) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This command can only be used in group chats. Please add me to a group and try again.'
+        )
+        return
+      }
+
+      // Check if this group is registered
+      const { data: groupChat, error: groupError } = await supabase
+        .from('group_chats')
+        .select('*')
+        .eq('chat_id', chatId)
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .single()
+
+      if (groupError || !groupChat) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This group chat is not registered for PA management. Send /register to register it first.'
+        )
+        return
+      }
+
+      // Check if user is a PA in this group
+      const { data: paData, error: paError } = await supabase
+        .from('personal_assistants')
+        .select('*')
+        .eq('pa_telegram_id', telegramUser.id)
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .single()
+
+      if (paError || !paData) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ You are not authorized as a PA in this group. Please contact the main user to add you as a PA.'
+        )
+        return
+      }
+
+      // Generate web access link
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      const accessLink = `${baseUrl}/pa/access?token=temp_token_${telegramUser.id}`
+
+      await this.bot.sendMessage(
+        chatId,
+        `🔗 **Web Access Link**
+
+Here's your temporary access link to view expenses:
+
+${accessLink}
+
+⚠️ **Important:**
+• This link expires in 24 hours
+• You can only view expenses (read-only access)
+• Do not share this link with others
+• Contact the main user for a new link if needed
+
+💡 **Tip:** You can use this link to view expense summaries and recent transactions!`,
+        { parse_mode: 'Markdown' }
+      )
+
+    } catch (error: any) {
+      console.error('❌ [WEB_ACCESS_COMMAND] Error handling web access command:', error)
+      await this.bot.sendMessage(
+        chatId,
+        '❌ Sorry, there was an error processing your request. Please try again later.'
+      )
+    }
   }
 } 
