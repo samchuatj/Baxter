@@ -24,8 +24,10 @@ try {
   process.exit(1);
 }
 
-// Set webhook URL (replace with your actual production URL)
-const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/webhook`;
+// Set webhook URL for the bot service
+// Use BOT_SERVICE_URL if available, otherwise fall back to NEXT_PUBLIC_APP_URL
+const botServiceUrl = process.env.BOT_SERVICE_URL || process.env.NEXT_PUBLIC_APP_URL;
+const webhookUrl = `${botServiceUrl}/api/telegram/webhook`;
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
 if (!webhookUrl || !botToken) {
@@ -38,6 +40,8 @@ if (!webhookUrl || !botToken) {
 async function setupWebhook() {
   try {
     console.log(`🔗 Setting webhook to: ${webhookUrl}`);
+    console.log(`🔗 Bot service URL: ${botServiceUrl}`);
+    console.log(`🔗 Using BOT_SERVICE_URL: ${!!process.env.BOT_SERVICE_URL}`);
     
     const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
       method: 'POST',
