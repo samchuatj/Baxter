@@ -1010,16 +1010,7 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
       }
 
       // Try to get the PA's Telegram ID from their username
-      // Since telegram_users table doesn't store usernames, we need to use Telegram API
-      // or require the PA to have interacted with the bot first
-      
-      // For now, we'll use a workaround: require the PA to send a message in the group first
-      // This way we can capture their telegram_id when they interact
-      await this.bot.sendMessage(
-        chatId,
-        `🔄 **Adding PA: @${cleanUsername}**\n\nTo add @${cleanUsername} as a PA:\n\n1. **Ask @${cleanUsername} to send any message** in this group first\n2. **Then run this command again**\n\n💡 **Why?** The bot needs to know their Telegram ID to add them as a PA.\n\n🔧 **Technical Note:** This is a temporary limitation. We're working on a better solution.`
-      )
-      return
+      // Now that we store usernames in telegram_users table, we can look them up
 
       // Try to get the PA's Telegram ID from their username
       // Now that we store usernames in telegram_users table, we can look them up
