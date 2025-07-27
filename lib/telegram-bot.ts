@@ -1012,13 +1012,13 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
       const { data: paUser, error: paUserError } = await supabase
         .from('telegram_users')
         .select('telegram_id, user_id')
-        .eq('telegram_id', telegramUser.id) // For now, we'll use the command sender as PA
+        .eq('username', cleanUsername) // Look up by actual username
         .single()
 
       if (paUserError || !paUser) {
         await this.bot.sendMessage(
           chatId,
-          `❌ **Cannot add PA: @${cleanUsername}**\n\nThe PA needs to:\n1. Send /start to the bot in a private chat\n2. Link their Telegram account to their Baxter account\n3. Then you can add them using this command.\n\n💡 **Note:** Currently, only users who have already linked their accounts can be added as PAs.`
+          `❌ **Cannot add PA: @${cleanUsername}**\n\nThe PA needs to:\n1. Send /start to the bot in a private chat\n2. Link their Telegram account to their Baxter account\n3. Then you can add them using this command.\n\n💡 **Note:** The PA must have linked their account first before they can be added.`
         )
         return
       }
