@@ -611,7 +611,7 @@ Once registered, anyone in this group can:
         console.log('📝 Bot Debug - API response:', result)
         // Only send a message if there is one (for exports, message can be null)
         if (result.message) {
-          await this.bot.sendMessage(chatId, result.message)
+          await this.bot.sendMessage(chatId, result.message, { parse_mode: 'Markdown' })
         }
       } else {
         const errorText = await response.text()
