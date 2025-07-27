@@ -20,11 +20,12 @@ function extractJsonFromText(text: string): any | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const { telegramId, userId, message, type, imageData, imageFormat, repliedToMessage } = await request.json()
+    const { telegramId, userId, chatId, message, type, imageData, imageFormat, repliedToMessage } = await request.json()
 
     console.log('🔍 Message API Debug - Received request:', { 
       telegramId, 
       userId, 
+      chatId,
       message, 
       type,
       hasImageData: !!imageData 
@@ -56,14 +57,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // In the simplified system, we assume the userId parameter is the group owner's ID
-    // All expenses from group members go to the group owner's account
-    let targetUserId = userId // Use the provided user ID (group owner)
-    
-    console.log('✅ Message API Debug - Group-based access, creating expenses for group owner:', { 
-      telegramId, 
-      groupOwnerId: targetUserId ? `${targetUserId.substring(0, 8)}...` : null 
-    })
+    // Check if this is a group message and validate group registration
+    let targetUserId: string
+    if (chatId && chatId < 0) { // Negative chatId indicates a group
+      // Check if this group is registered
+      const { data: groupChat, error: groupError } = await supabase
+        .from('group_chats')
+        .select('user_id')
+        .eq('chat_id', chatId)
+        .eq('is_active', true)
+        .single()
+
+      if (groupError || !groupChat) {
+        console.log('❌ Message API Debug - Group not registered:', { chatId, telegramId })
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Group not registered',
+            message: '❌ This group is not registered for expense tracking. Please use /register to register this group first.'
+          },
+          { status: 403 }
+        )
+      }
+
+      // Use the group owner's user ID for expense creation
+      targetUserId = groupChat.user_id
+      console.log('✅ Message API Debug - Group-based access, creating expenses for group owner:', { 
+        chatId,
+        telegramId, 
+        groupOwnerId: targetUserId ? `${targetUserId.substring(0, 8)}...` : null 
+      })
+    } else {
+      // Direct message - use the user's own account
+      targetUserId = linkedUser.user_id
+      console.log('✅ Message API Debug - Direct message, creating expenses for user:', { 
+        telegramId, 
+        userId: targetUserId ? `${targetUserId.substring(0, 8)}...` : null 
+      })
+    }
 
     console.log('✅ Message API Debug - User verified, processing message')
 

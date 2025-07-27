@@ -611,7 +611,7 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
 
     try {
 
-      // Check if user is linked and if they're a PA
+      // Check if user is linked
       const supabase = createSupabaseClient()
       const { data: linkedUser } = await supabase
         .from('telegram_users')
@@ -627,27 +627,28 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
         return
       }
 
-      // Check if this user is a PA for the main user
-      const { data: paRecord } = await supabase
-        .from('personal_assistants')
+      // Check if this group is registered
+      const { data: groupChat } = await supabase
+        .from('group_chats')
         .select('user_id')
-        .eq('pa_telegram_id', telegramId)
+        .eq('chat_id', chatId)
         .eq('is_active', true)
         .single()
 
-      // Determine which user's expenses to work with
-      let targetUserId = linkedUser.user_id // Default to the user's own account
-      
-      if (paRecord) {
-        // This is a PA, so they can create expenses for the main user
-        targetUserId = paRecord.user_id
-        console.log('✅ Photo Debug - PA detected, creating expenses for main user:', { 
-          paTelegramId: telegramId, 
-          mainUserId: targetUserId ? `${targetUserId.substring(0, 8)}...` : null 
-        })
-      } else {
-        console.log('✅ Photo Debug - Regular user, creating expenses for themselves')
+      if (!groupChat) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This group is not registered for expense tracking. Please use /register to register this group first.'
+        )
+        return
       }
+
+      // Use the group owner's user ID for expense creation
+      const targetUserId = groupChat.user_id
+      console.log('✅ Photo Debug - Group-based access, creating expenses for group owner:', { 
+        telegramId, 
+        groupOwnerId: targetUserId ? `${targetUserId.substring(0, 8)}...` : null 
+      })
 
       // Get the largest photo (best quality)
       const photo = msg.photo![msg.photo!.length - 1]
@@ -698,6 +699,7 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
           body: JSON.stringify({
             telegramId,
             userId: targetUserId,
+            chatId: chatId,
             message: 'Image uploaded',
             type: 'image',
             imageData: base64Image,
