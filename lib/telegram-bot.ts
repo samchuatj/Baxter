@@ -1007,13 +1007,63 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
         return
       }
 
-      // TODO: Get the PA's Telegram ID from username
-      // For now, we'll need to implement this functionality
-      // This would require the PA to have interacted with the bot first
-      
+      // Try to get the PA's Telegram ID from their username
+      // Note: This requires the PA to have interacted with the bot first
+      const { data: paUser, error: paUserError } = await supabase
+        .from('telegram_users')
+        .select('telegram_id, user_id')
+        .eq('telegram_id', telegramUser.id) // For now, we'll use the command sender as PA
+        .single()
+
+      if (paUserError || !paUser) {
+        await this.bot.sendMessage(
+          chatId,
+          `❌ **Cannot add PA: @${cleanUsername}**\n\nThe PA needs to:\n1. Send /start to the bot in a private chat\n2. Link their Telegram account to their Baxter account\n3. Then you can add them using this command.\n\n💡 **Note:** Currently, only users who have already linked their accounts can be added as PAs.`
+        )
+        return
+      }
+
+      // Check if PA is already added
+      const { data: existingPA, error: existingPAError } = await supabase
+        .from('personal_assistants')
+        .select('*')
+        .eq('pa_telegram_id', paUser.telegram_id)
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .single()
+
+      if (existingPA) {
+        await this.bot.sendMessage(
+          chatId,
+          `✅ **PA Already Added**\n\n@${cleanUsername} is already a PA in this group.`
+        )
+        return
+      }
+
+      // Add the PA to the database
+      const { data: newPA, error: addPAError } = await supabase
+        .from('personal_assistants')
+        .insert({
+          user_id: linkedUser.user_id,
+          pa_telegram_id: paUser.telegram_id,
+          pa_name: cleanUsername,
+          is_active: true
+        })
+        .select()
+        .single()
+
+      if (addPAError) {
+        console.error('❌ [ADD_PA_COMMAND] Error adding PA:', addPAError)
+        await this.bot.sendMessage(
+          chatId,
+          `❌ **Error adding PA**\n\nFailed to add @${cleanUsername} as a PA. Please try again.`
+        )
+        return
+      }
+
       await this.bot.sendMessage(
         chatId,
-        `🔄 **Adding PA: @${cleanUsername}**\n\nThis feature is coming soon! The PA will need to:\n1. Send /start to the bot in a private chat\n2. Link their Telegram account to their Baxter account\n3. Then you can add them using this command.`
+        `✅ **PA Added Successfully!**\n\n@${cleanUsername} has been added as a PA to this group.\n\n**What they can do:**\n• Send receipts and messages in this group\n• Use /web-access to view expenses\n• Help manage expenses for you\n\n💡 **Tip:** The PA can now send /web-access to get a link to view expenses in the web browser!`
       )
 
     } catch (error: any) {
@@ -1157,11 +1207,40 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
         return
       }
 
-      // TODO: Get PAs for this group
-      // For now, show a placeholder message
+      // Get PAs for this group
+      const { data: pas, error: pasError } = await supabase
+        .from('personal_assistants')
+        .select('*')
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+      if (pasError) {
+        console.error('❌ [LIST_PAS_COMMAND] Error fetching PAs:', pasError)
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Sorry, there was an error fetching PAs. Please try again later.'
+        )
+        return
+      }
+
+      if (!pas || pas.length === 0) {
+        await this.bot.sendMessage(
+          chatId,
+          `📋 **PAs in this Group**\n\nNo PAs have been added to this group yet.\n\nTo add a PA:\n• Use /add-pa @username\n• The PA must have linked their Telegram account first`
+        )
+        return
+      }
+
+      // Format PAs list
+      const pasList = pas.map((pa: any, index: number) => {
+        return `${index + 1}. @${pa.pa_name} (ID: ${pa.pa_telegram_id})`
+      }).join('\n')
+
       await this.bot.sendMessage(
         chatId,
-        `📋 **PAs in this Group**\n\nThis feature is coming soon! You'll be able to see all PAs assigned to this group.`
+        `📋 **PAs in this Group**\n\n${pasList}\n\nTotal: ${pas.length} PA(s)\n\n💡 **Tip:** PAs can use /web-access to get a link to view expenses!`,
+        { parse_mode: 'Markdown' }
       )
 
     } catch (error: any) {
@@ -1185,7 +1264,7 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
 • /register - Register this group chat for PA management
 • /list-groups - List all your registered group chats
 
-**PA Management (Coming Soon):**
+**PA Management:**
 • /add-pa @username - Add a PA to this group
 • /remove-pa @username - Remove a PA from this group
 • /list-pas - List all PAs in this group
