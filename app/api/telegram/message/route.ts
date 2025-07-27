@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       // Emoji map for categories
       const categoryEmojis: Record<string, string> = {
         'Food': '🍔',
-        'Travel': '✈️',
+        'Travel': '🚗',
         'Software Subscription': '💻',
         'Others': '🛒',
         'Uncategorized': '❓'
