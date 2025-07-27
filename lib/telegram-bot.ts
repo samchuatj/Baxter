@@ -276,13 +276,15 @@ export class TelegramBotService {
       // Store pending authentication in database
       console.log('🔍 [START_COMMAND] Storing token in database:', { 
         token: authToken ? `${authToken.substring(0, 8)}...` : null, 
-        telegram_id: telegramUser.id 
+        telegram_id: telegramUser.id,
+        username: telegramUser.username
       })
       const { error: insertError } = await supabase
         .from('pending_auth')
         .insert({
           token: authToken,
-          telegram_id: telegramUser.id
+          telegram_id: telegramUser.id,
+          username: telegramUser.username || null
         })
 
       console.log('🔍 [START_COMMAND] Insert result:', { insertError })
@@ -1019,8 +1021,64 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
       )
       return
 
-      // TODO: Implement proper PA lookup by username
-      // For now, this is a placeholder that explains the limitation
+      // Try to get the PA's Telegram ID from their username
+      // Now that we store usernames in telegram_users table, we can look them up
+      const { data: paUser, error: paUserError } = await supabase
+        .from('telegram_users')
+        .select('telegram_id, user_id')
+        .eq('username', cleanUsername)
+        .single()
+
+      if (paUserError || !paUser) {
+        await this.bot.sendMessage(
+          chatId,
+          `❌ **Cannot add PA: @${cleanUsername}**\n\nThe PA needs to:\n1. Send /start to the bot in a private chat\n2. Link their Telegram account to their Baxter account\n3. Then you can add them using this command.\n\n💡 **Note:** The PA must have linked their account first before they can be added.`
+        )
+        return
+      }
+
+      // Check if PA is already added
+      const { data: existingPA, error: existingPAError } = await supabase
+        .from('personal_assistants')
+        .select('*')
+        .eq('pa_telegram_id', paUser.telegram_id)
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .single()
+
+      if (existingPA) {
+        await this.bot.sendMessage(
+          chatId,
+          `✅ **PA Already Added**\n\n@${cleanUsername} is already a PA in this group.`
+        )
+        return
+      }
+
+      // Add the PA to the database
+      const { data: newPA, error: addPAError } = await supabase
+        .from('personal_assistants')
+        .insert({
+          user_id: linkedUser.user_id,
+          pa_telegram_id: paUser.telegram_id,
+          pa_name: cleanUsername,
+          is_active: true
+        })
+        .select()
+        .single()
+
+      if (addPAError) {
+        console.error('❌ [ADD_PA_COMMAND] Error adding PA:', addPAError)
+        await this.bot.sendMessage(
+          chatId,
+          `❌ **Error adding PA**\n\nFailed to add @${cleanUsername} as a PA. Please try again.`
+        )
+        return
+      }
+
+      await this.bot.sendMessage(
+        chatId,
+        `✅ **PA Added Successfully!**\n\n@${cleanUsername} has been added as a PA to this group.\n\n**What they can do:**\n• Send receipts and messages in this group\n• Use /web-access to view expenses\n• Help manage expenses for you\n\n💡 **Tip:** The PA can now send /web-access to get a link to view expenses in the web browser!`
+      )
 
     } catch (error: any) {
       console.error('❌ [ADD_PA_COMMAND] Error handling add PA command:', error)

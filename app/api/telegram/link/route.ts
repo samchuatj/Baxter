@@ -96,13 +96,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Insert the link
+    // Get the username from the pending auth record
+    // We'll need to store the username when the user first sends /start
     console.log('🔍 [LINK_API] Inserting link:', { telegram_id: telegramId, user_id: userId ? `${userId.substring(0, 8)}...` : null })
     const { error: linkError } = await supabase
       .from('telegram_users')
       .insert({
         telegram_id: telegramId,
-        user_id: userId
+        user_id: userId,
+        username: pending.username || null // Store username if available
       })
 
     console.log('🔍 [LINK_API] Link insert result:', { linkError })
