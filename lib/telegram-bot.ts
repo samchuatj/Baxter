@@ -148,6 +148,11 @@ export class TelegramBotService {
     this.bot.on('photo', async (msg) => {
       await this.handlePhotoMessage(msg)
     })
+
+    // Bot added to group handler
+    this.bot.on('new_chat_members', async (msg) => {
+      await this.handleBotAddedToGroup(msg)
+    })
   }
 
   // Public method to set up handlers for webhook mode
@@ -1420,6 +1425,48 @@ ${accessLink}
         chatId,
         '❌ Sorry, there was an error processing your request. Please try again later.'
       )
+    }
+  }
+
+  private async handleBotAddedToGroup(msg: TelegramBot.Message) {
+    const chatId = msg.chat.id
+    const chatTitle = msg.chat.title || 'this group'
+    
+    console.log(`🎉 [BOT_ADDED] Bot added to group: ${chatTitle} (ID: ${chatId})`)
+
+    try {
+      // Check if this is a group (not a private chat)
+      if (msg.chat.type === 'private') {
+        console.log('📝 [BOT_ADDED] This is a private chat, skipping intro message')
+        return
+      }
+
+      // Check if the bot was actually added (not just other members)
+      const botWasAdded = msg.new_chat_members?.some(member => 
+        member.is_bot === true
+      )
+
+      if (!botWasAdded) {
+        console.log('📝 [BOT_ADDED] Bot was not added, other members were added')
+        return
+      }
+
+      // Send welcome message
+      const welcomeMessage = `🤖 **Welcome to Baxter Expense Bot!**
+
+Hi everyone! I'm Baxter, your AI expense tracking assistant.
+
+Send /register to register this group and get started tracking your expenses!
+
+💡 **Tip:** Once registered, all expenses sent in this group will be tracked for the group owner!
+
+Need help? Send /help for more information.`
+
+      await this.bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' })
+
+    } catch (error) {
+      console.error('❌ [BOT_ADDED] Error sending welcome message:', error)
+      // Don't throw error - this is not critical functionality
     }
   }
 } 
