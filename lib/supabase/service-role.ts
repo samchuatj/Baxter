@@ -20,9 +20,9 @@ function dummyQueryBuilder(result = { data: null, error: null }) {
     order: () => chain,
     limit: () => chain,
     single: () => Promise.resolve(result),
-    insert: () => chain,
-    update: () => chain,
-    delete: () => chain,
+    insert: () => Promise.resolve(result),
+    update: () => Promise.resolve(result),
+    delete: () => Promise.resolve(result),
     gte: () => chain,
     lte: () => chain,
     in: () => chain,
@@ -43,6 +43,7 @@ export const createServiceRoleClient = () => {
         getSession: () => Promise.resolve({ data: { session: null }, error: null }),
       },
       from: () => dummyQueryBuilder(),
+      rpc: () => Promise.resolve({ data: null, error: null }),
     };
   }
 

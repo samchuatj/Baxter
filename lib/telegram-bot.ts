@@ -100,6 +100,32 @@ export class TelegramBotService {
       await this.handleStartCommand(chatId, telegramUser)
     })
 
+    // Handle /register command for group chat registration
+    this.bot.onText(/\/register/, async (msg: TelegramBot.Message) => {
+      const chatId = msg.chat.id
+      const telegramUser: TelegramUser = {
+        id: msg.from!.id,
+        username: msg.from!.username,
+        first_name: msg.from!.first_name,
+        last_name: msg.from!.last_name,
+      }
+
+      await this.handleRegisterCommand(chatId, telegramUser, msg)
+    })
+
+    // Handle /list-groups command
+    this.bot.onText(/\/list-groups/, async (msg: TelegramBot.Message) => {
+      const chatId = msg.chat.id
+      const telegramUser: TelegramUser = {
+        id: msg.from!.id,
+        username: msg.from!.username,
+        first_name: msg.from!.first_name,
+        last_name: msg.from!.last_name,
+      }
+
+      await this.handleListGroupsCommand(chatId, telegramUser)
+    })
+
     // Handle text messages
     this.bot.on('message', async (msg: TelegramBot.Message) => {
       if (msg.text && !msg.text.startsWith('/')) {
@@ -308,6 +334,183 @@ Just send a message or a photo of a receipt to get started!`,
       } catch (answerError) {
         console.error(`❌ [AUTH_CALLBACK] Failed to answer callback query:`, answerError)
       }
+    }
+  }
+
+  private async handleRegisterCommand(chatId: number, telegramUser: TelegramUser, msg: TelegramBot.Message) {
+    console.log(`🔍 [REGISTER_COMMAND] Starting /register command handling`)
+    console.log(`🔍 [REGISTER_COMMAND] Chat ID: ${chatId}`)
+    console.log(`🔍 [REGISTER_COMMAND] Chat type: ${msg.chat.type}`)
+    console.log(`🔍 [REGISTER_COMMAND] Telegram user:`, telegramUser)
+    
+    try {
+      if (!isSupabaseConfigured) {
+        console.log(`❌ [REGISTER_COMMAND] Supabase not configured`)
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Bot is not properly configured. Please contact the administrator.'
+        )
+        return
+      }
+
+      // Check if this is a group chat
+      if (msg.chat.type === 'private') {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ This command only works in group chats. Please add me to a group chat and try again.'
+        )
+        return
+      }
+
+      // Check if user is linked to a Baxter account
+      const supabase = createSupabaseClient()
+      const { data: linkedUser, error: linkError } = await supabase
+        .from('telegram_users')
+        .select('user_id')
+        .eq('telegram_id', telegramUser.id)
+        .single()
+
+      if (linkError || !linkedUser) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ You need to link your Telegram account to your Baxter account first. Send /start to me in a private chat to get started.'
+        )
+        return
+      }
+
+      // Check if this group is already registered
+      const { data: existingGroup, error: groupError } = await supabase
+        .from('group_chats')
+        .select('*')
+        .eq('chat_id', chatId)
+        .single()
+
+      if (existingGroup) {
+        await this.bot.sendMessage(
+          chatId,
+          '✅ This group chat is already registered for PA management!'
+        )
+        return
+      }
+
+      // Generate registration token
+      const registrationToken = this.generateAuthToken()
+      const registrationLink = `${process.env.NEXT_PUBLIC_APP_URL}/pa/register-group?token=${registrationToken}&chat_id=${chatId}&telegram_id=${telegramUser.id}`
+
+      // Store pending registration
+      const { error: insertError } = await supabase
+        .from('pending_auth')
+        .insert({
+          token: registrationToken,
+          telegram_id: telegramUser.id
+        })
+
+      if (insertError) {
+        console.error('❌ [REGISTER_COMMAND] Error storing registration token:', insertError)
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Sorry, there was an error generating your registration link. Please try again.'
+        )
+        return
+      }
+
+      // Send registration link
+      await this.bot.sendMessage(
+        chatId,
+        `🔗 **Group Chat Registration**
+
+To register this group chat for PA management, click the link below:
+
+${registrationLink}
+
+⚠️ *This link expires in 10 minutes.*
+
+Once registered, you'll be able to add PAs to this group and manage expenses together!`,
+        { parse_mode: 'Markdown' }
+      )
+
+    } catch (error: any) {
+      console.error('❌ [REGISTER_COMMAND] Error handling register command:', error)
+      await this.bot.sendMessage(
+        chatId,
+        '❌ Sorry, there was an error processing your request. Please try again later.'
+      )
+    }
+  }
+
+  private async handleListGroupsCommand(chatId: number, telegramUser: TelegramUser) {
+    console.log(`🔍 [LIST_GROUPS_COMMAND] Starting /list-groups command handling`)
+    console.log(`🔍 [LIST_GROUPS_COMMAND] Chat ID: ${chatId}`)
+    console.log(`🔍 [LIST_GROUPS_COMMAND] Telegram user:`, telegramUser)
+    
+    try {
+      if (!isSupabaseConfigured) {
+        console.log(`❌ [LIST_GROUPS_COMMAND] Supabase not configured`)
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Bot is not properly configured. Please contact the administrator.'
+        )
+        return
+      }
+
+      // Check if user is linked to a Baxter account
+      const supabase = createSupabaseClient()
+      const { data: linkedUser, error: linkError } = await supabase
+        .from('telegram_users')
+        .select('user_id')
+        .eq('telegram_id', telegramUser.id)
+        .single()
+
+      if (linkError || !linkedUser) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ You need to link your Telegram account to your Baxter account first. Send /start to me in a private chat to get started.'
+        )
+        return
+      }
+
+      // Get user's registered group chats
+      const { data: groupChats, error: groupsError } = await supabase
+        .from('group_chats')
+        .select('*')
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+      if (groupsError) {
+        console.error('❌ [LIST_GROUPS_COMMAND] Error fetching group chats:', groupsError)
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Sorry, there was an error fetching your group chats. Please try again later.'
+        )
+        return
+      }
+
+      if (!groupChats || groupChats.length === 0) {
+        await this.bot.sendMessage(
+          chatId,
+          '📝 You haven\'t registered any group chats yet.\n\nTo register a group chat:\n1. Add me to a group chat\n2. Send /register in that group\n3. Click the registration link'
+        )
+        return
+      }
+
+      // Format group chats list
+      const groupsList = groupChats.map((group: any, index: number) => {
+        return `${index + 1}. ${group.chat_title || 'Untitled Group'} (ID: ${group.chat_id})`
+      }).join('\n')
+
+      await this.bot.sendMessage(
+        chatId,
+        `📋 **Your Registered Group Chats**\n\n${groupsList}\n\nTotal: ${groupChats.length} group(s)`,
+        { parse_mode: 'Markdown' }
+      )
+
+    } catch (error: any) {
+      console.error('❌ [LIST_GROUPS_COMMAND] Error handling list groups command:', error)
+      await this.bot.sendMessage(
+        chatId,
+        '❌ Sorry, there was an error processing your request. Please try again later.'
+      )
     }
   }
 
