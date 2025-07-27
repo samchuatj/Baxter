@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       console.error('❌ Message API Debug - Error fetching business purposes:', purposesError)
     }
 
-    const availableCategories = businessPurposes?.map((p: any) => p.name).join(', ') || 'Food, Travel, Software Subscription, Others'
+    const availableCategories = businessPurposes?.map((p: any) => p.name).join(', ') || 'Food, Transport, Software Subscription, Others'
     console.log('📋 Message API Debug - Available categories:', availableCategories)
 
     // --- Determine context scope based on message content ---
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       // Emoji map for categories
       const categoryEmojis: Record<string, string> = {
         'Food': '🍔',
-        'Travel': '🚗',
+        'Transport': '🚗',
         'Software Subscription': '💻',
         'Others': '🛒',
         'Uncategorized': '❓'
