@@ -41,12 +41,11 @@ export async function POST(request: NextRequest) {
     // This bypasses RLS policies but we ensure security by verifying user ownership
     const supabase = createServiceRoleClient()
 
-    // Verify the user is linked
+    // Verify the user is linked and check if they're a PA
     const { data: linkedUser, error: linkError } = await supabase
       .from('telegram_users')
       .select('user_id')
       .eq('telegram_id', telegramId)
-      .eq('user_id', userId)
       .single()
 
     if (linkError || !linkedUser) {
@@ -55,6 +54,39 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'User not linked' },
         { status: 400 }
       )
+    }
+
+    // Check if this user is a PA for the main user
+    const { data: paRecord, error: paError } = await supabase
+      .from('personal_assistants')
+      .select('user_id')
+      .eq('pa_telegram_id', telegramId)
+      .eq('is_active', true)
+      .single()
+
+    // Determine which user's expenses to work with
+    let targetUserId = userId // Default to the user's own account
+    
+    if (paRecord) {
+      // This is a PA, so they can create expenses for the main user
+      targetUserId = paRecord.user_id
+      console.log('✅ Message API Debug - PA detected, creating expenses for main user:', { 
+        paTelegramId: telegramId, 
+        mainUserId: targetUserId ? `${targetUserId.substring(0, 8)}...` : null 
+      })
+    } else if (linkedUser.user_id !== userId) {
+      // User is linked but not a PA and not the main user - this shouldn't happen
+      console.log('❌ Message API Debug - User linked but not authorized:', { 
+        telegramId, 
+        linkedUserId: linkedUser.user_id ? `${linkedUser.user_id.substring(0, 8)}...` : null,
+        requestUserId: userId ? `${userId.substring(0, 8)}...` : null 
+      })
+      return NextResponse.json(
+        { success: false, error: 'User not authorized' },
+        { status: 400 }
+      )
+    } else {
+      console.log('✅ Message API Debug - Regular user, creating expenses for themselves')
     }
 
     console.log('✅ Message API Debug - User verified, processing message')
@@ -116,7 +148,7 @@ export async function POST(request: NextRequest) {
         receipt_filename,
         created_at
       `)
-      .eq('user_id', userId)
+      .eq('user_id', targetUserId)
 
     // Apply date filter if specified
     if (dateFilter) {
@@ -532,7 +564,7 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
                 const { data, error: dupError } = await supabase
                   .from('expenses')
                   .select('id')
-                  .eq('user_id', userId)
+                  .eq('user_id', targetUserId)
                   .eq('receipt_hash', receiptHash)
                   .single()
                 if (data) {
@@ -552,7 +584,7 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
             const { error: expenseInsertError } = await supabase
               .from('expenses')
               .insert({
-                user_id: userId,
+                user_id: targetUserId,
                 total_amount: extractedAction.amount,
                 date: extractedAction.date,
                 merchant_name: extractedAction.merchant || 'Unknown',
