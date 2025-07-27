@@ -623,7 +623,7 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
             let expenseQuery = supabase
               .from('expenses')
               .select('id, date, merchant_name, total_amount, business_purpose')
-              .eq('user_id', userId)
+              .eq('user_id', targetUserId)
             if (extractedAction.filter.date) {
               expenseQuery = expenseQuery.eq('date', extractedAction.filter.date)
             }
@@ -695,7 +695,7 @@ CRITICAL: When you receive a receipt image, you MUST use the "create" action to 
               .from('expenses')
               .update(updateFields)
               .eq('id', expenseId)
-              .eq('user_id', userId)
+              .eq('user_id', targetUserId)
             if (!editError) {
               // Build success message with updated fields
               const updatedFields = Object.keys(updateFields).map(field => {
