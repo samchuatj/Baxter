@@ -548,10 +548,29 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
         return
       }
 
+      // Check if this is a group message and validate group registration
+      if (chatId < 0) { // Negative chatId indicates a group
+        const { data: groupChat } = await supabase
+          .from('group_chats')
+          .select('user_id')
+          .eq('chat_id', chatId)
+          .eq('is_active', true)
+          .single()
+
+        if (!groupChat) {
+          await this.bot.sendMessage(
+            chatId,
+            '❌ This group is not registered for expense tracking. Please use /register to register this group first.'
+          )
+          return
+        }
+      }
+
       // Debug log for outgoing API payload
       console.log('Bot Debug - Request payload:', {
         telegramId,
         userId: linkedUser.user_id,
+        chatId,
         message: text,
         type: 'text',
         repliedToMessage
@@ -565,6 +584,7 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
         body: JSON.stringify({
           telegramId,
           userId: linkedUser.user_id,
+          chatId: chatId,
           message: text,
           type: 'text',
           repliedToMessage
