@@ -19,8 +19,8 @@ function RegisterGroupContent() {
       try {
         // Get parameters from URL
         const token = searchParams.get('token')
-        const chatId = searchParams.get('chat_id')
-        const telegramId = searchParams.get('telegram_id')
+        const chatId = searchParams.get('chat_id') || searchParams.get('chatid')
+        const telegramId = searchParams.get('telegram_id') || searchParams.get('telegramid')
         
         if (!token || !chatId || !telegramId) {
           setStatus('error')
@@ -34,8 +34,8 @@ function RegisterGroupContent() {
         if (userError || !user) {
           // Store the registration parameters in session storage
           sessionStorage.setItem('pa_registration_token', token)
-          sessionStorage.setItem('pa_registration_chat_id', chatId)
-          sessionStorage.setItem('pa_registration_telegram_id', telegramId)
+          sessionStorage.setItem('pa_registration_chatid', chatId)
+          sessionStorage.setItem('pa_registration_telegramid', telegramId)
           
           // Redirect to login with next param pointing to group registration
           const loginUrl = '/auth/login?next=/pa/register-group'
@@ -45,8 +45,8 @@ function RegisterGroupContent() {
 
         // Clear session storage since we're now authenticated
         sessionStorage.removeItem('pa_registration_token')
-        sessionStorage.removeItem('pa_registration_chat_id')
-        sessionStorage.removeItem('pa_registration_telegram_id')
+        sessionStorage.removeItem('pa_registration_chatid')
+        sessionStorage.removeItem('pa_registration_telegramid')
 
         // Call the API to register the group
         const response = await fetch('/api/pa/register-group', {

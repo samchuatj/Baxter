@@ -395,7 +395,7 @@ Just send a message or a photo of a receipt to get started!`,
 
       // Generate registration token
       const registrationToken = this.generateAuthToken()
-      const registrationLink = `${process.env.NEXT_PUBLIC_APP_URL}/pa/register-group?token=${registrationToken}&chat_id=${chatId}&telegram_id=${telegramUser.id}`
+      const registrationLink = `${process.env.NEXT_PUBLIC_APP_URL}/pa/register-group?token=${registrationToken}&chatid=${chatId}&telegramid=${telegramUser.id}`
 
       // Store pending registration
       const { error: insertError } = await supabase
