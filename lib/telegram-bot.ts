@@ -87,139 +87,66 @@ export class TelegramBotService {
   }
 
   private setupHandlers() {
-    // Handle /start command
-    this.bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
-      const chatId = msg.chat.id
-      const telegramUser: TelegramUser = {
+    // Command handlers
+    this.bot.onText(/\/start/, async (msg) => {
+      await this.handleStartCommand(msg.chat.id, {
         id: msg.from!.id,
         username: msg.from!.username,
         first_name: msg.from!.first_name,
-        last_name: msg.from!.last_name,
-      }
-
-      await this.handleStartCommand(chatId, telegramUser)
+        last_name: msg.from!.last_name
+      })
     })
 
-    // Handle /register command for group chat registration
-    this.bot.onText(/\/register/, async (msg: TelegramBot.Message) => {
-      const chatId = msg.chat.id
-      const telegramUser: TelegramUser = {
+    // Group registration
+    this.bot.onText(/\/register/, async (msg) => {
+      await this.handleRegisterCommand(msg.chat.id, {
         id: msg.from!.id,
         username: msg.from!.username,
         first_name: msg.from!.first_name,
-        last_name: msg.from!.last_name,
-      }
-
-      await this.handleRegisterCommand(chatId, telegramUser, msg)
+        last_name: msg.from!.last_name
+      }, msg)
     })
 
-    // Handle /list-groups command
-    this.bot.onText(/\/list-groups/, async (msg: TelegramBot.Message) => {
-      const chatId = msg.chat.id
-      const telegramUser: TelegramUser = {
+    // List groups
+    this.bot.onText(/\/list-groups/, async (msg) => {
+      await this.handleListGroupsCommand(msg.chat.id, {
         id: msg.from!.id,
         username: msg.from!.username,
         first_name: msg.from!.first_name,
-        last_name: msg.from!.last_name,
-      }
-
-      await this.handleListGroupsCommand(chatId, telegramUser)
+        last_name: msg.from!.last_name
+      })
     })
 
-    // Handle /add-pa command
-    this.bot.onText(/\/add-pa (.+)/, async (msg: TelegramBot.Message, match: RegExpExecArray | null) => {
-      const chatId = msg.chat.id
-      const telegramUser: TelegramUser = {
+    // Web access for anyone in group
+    this.bot.onText(/\/web-access/, async (msg) => {
+      await this.handleWebAccessCommand(msg.chat.id, {
         id: msg.from!.id,
         username: msg.from!.username,
         first_name: msg.from!.first_name,
-        last_name: msg.from!.last_name,
-      }
-
-      if (match && match[1]) {
-        await this.handleAddPACommand(chatId, telegramUser, match[1].trim())
-      } else {
-        await this.bot.sendMessage(chatId, '❌ Please specify a username: /add-pa @username')
-      }
+        last_name: msg.from!.last_name
+      })
     })
 
-    // Handle /remove-pa command
-    this.bot.onText(/\/remove-pa (.+)/, async (msg: TelegramBot.Message, match: RegExpExecArray | null) => {
-      const chatId = msg.chat.id
-      const telegramUser: TelegramUser = {
+    // Help command
+    this.bot.onText(/\/help/, async (msg) => {
+      await this.handleHelpCommand(msg.chat.id, {
         id: msg.from!.id,
         username: msg.from!.username,
         first_name: msg.from!.first_name,
-        last_name: msg.from!.last_name,
-      }
-
-      if (match && match[1]) {
-        await this.handleRemovePACommand(chatId, telegramUser, match[1].trim())
-      } else {
-        await this.bot.sendMessage(chatId, '❌ Please specify a username: /remove-pa @username')
-      }
+        last_name: msg.from!.last_name
+      })
     })
 
-    // Handle /list-pas command
-    this.bot.onText(/\/list-pas/, async (msg: TelegramBot.Message) => {
-      const chatId = msg.chat.id
-      const telegramUser: TelegramUser = {
-        id: msg.from!.id,
-        username: msg.from!.username,
-        first_name: msg.from!.first_name,
-        last_name: msg.from!.last_name,
-      }
-
-      await this.handleListPAsCommand(chatId, telegramUser)
-    })
-
-    // Handle /help command
-    this.bot.onText(/\/help/, async (msg: TelegramBot.Message) => {
-      const chatId = msg.chat.id
-      const telegramUser: TelegramUser = {
-        id: msg.from!.id,
-        username: msg.from!.username,
-        first_name: msg.from!.first_name,
-        last_name: msg.from!.last_name,
-      }
-
-      await this.handleHelpCommand(chatId, telegramUser)
-    })
-
-    // Handle /web-access command
-    this.bot.onText(/\/web-access/, async (msg: TelegramBot.Message) => {
-      const chatId = msg.chat.id
-      const telegramUser: TelegramUser = {
-        id: msg.from!.id,
-        username: msg.from!.username,
-        first_name: msg.from!.first_name,
-        last_name: msg.from!.last_name,
-      }
-
-      await this.handleWebAccessCommand(chatId, telegramUser)
-    })
-
-    // Handle text messages
-    this.bot.on('message', async (msg: TelegramBot.Message) => {
+    // Text message handler
+    this.bot.on('message', async (msg) => {
       if (msg.text && !msg.text.startsWith('/')) {
         await this.handleTextMessage(msg)
       }
     })
 
-    // Handle photo messages - only process the largest photo to avoid duplicates
-    this.bot.on('photo', async (msg: TelegramBot.Message) => {
-      // Only process the largest photo (last in the array) to avoid duplicates
-      if (msg.photo && msg.photo.length > 0) {
-        // Always use the largest photo (last in the array)
-        await this.handlePhotoMessage(msg)
-      }
-    })
-
-    // Handle callback queries (when user clicks magic link)
-    this.bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
-      if (query.data?.startsWith('auth_')) {
-        await this.handleAuthCallback(query)
-      }
+    // Photo message handler
+    this.bot.on('photo', async (msg) => {
+      await this.handlePhotoMessage(msg)
     })
   }
 
@@ -1195,10 +1122,10 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
         return
       }
 
-      // Remove the PA from the database
+      // Deactivate the PA instead of deleting (so we can track removed PAs)
       const { error: removePAError } = await supabase
         .from('personal_assistants')
-        .delete()
+        .update({ is_active: false })
         .eq('pa_telegram_id', paUser.telegram_id)
         .eq('user_id', linkedUser.user_id)
 
@@ -1336,16 +1263,11 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
       const helpMessage = `🤖 **Baxter Expense Manager - Available Commands**
 
 **Group Management:**
-• /register - Register this group chat for PA management
-• /list-groups - List all your registered group chats
+• /register - Register this group for expense tracking
+• /list-groups - List your registered groups
 
-**PA Management:**
-• /add-pa @username - Add a PA to this group
-• /remove-pa @username - Remove a PA from this group
-• /list-pas - List all PAs in this group
-
-**PA Web Access:**
-• /web-access - Get a link to view expenses in web browser
+**Web Access:**
+• /web-access - Get a magic link to view expenses
 
 **General:**
 • /help - Show this help message
@@ -1354,7 +1276,7 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
 • Send photos of receipts - I'll automatically extract expense details
 • Send text messages - Ask about your expenses, get summaries, etc.
 
-💡 **Tip:** PAs can help manage your expenses by sending receipts and messages in this group!`
+💡 **Tip:** Anyone in the group can help manage expenses by sending receipts and messages!`
 
       await this.bot.sendMessage(
         chatId,

@@ -56,38 +56,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if this user is a PA for the main user
-    const { data: paRecord, error: paError } = await supabase
-      .from('personal_assistants')
-      .select('user_id')
-      .eq('pa_telegram_id', telegramId)
-      .eq('is_active', true)
-      .single()
-
-    // Determine which user's expenses to work with
-    let targetUserId = userId // Default to the user's own account
+    // In the simplified system, we assume the userId parameter is the group owner's ID
+    // All expenses from group members go to the group owner's account
+    let targetUserId = userId // Use the provided user ID (group owner)
     
-    if (paRecord) {
-      // This is a PA, so they can create expenses for the main user
-      targetUserId = paRecord.user_id
-      console.log('✅ Message API Debug - PA detected, creating expenses for main user:', { 
-        paTelegramId: telegramId, 
-        mainUserId: targetUserId ? `${targetUserId.substring(0, 8)}...` : null 
-      })
-    } else if (linkedUser.user_id !== userId) {
-      // User is linked but not a PA and not the main user - this shouldn't happen
-      console.log('❌ Message API Debug - User linked but not authorized:', { 
-        telegramId, 
-        linkedUserId: linkedUser.user_id ? `${linkedUser.user_id.substring(0, 8)}...` : null,
-        requestUserId: userId ? `${userId.substring(0, 8)}...` : null 
-      })
-      return NextResponse.json(
-        { success: false, error: 'User not authorized' },
-        { status: 400 }
-      )
-    } else {
-      console.log('✅ Message API Debug - Regular user, creating expenses for themselves')
-    }
+    console.log('✅ Message API Debug - Group-based access, creating expenses for group owner:', { 
+      telegramId, 
+      groupOwnerId: targetUserId ? `${targetUserId.substring(0, 8)}...` : null 
+    })
 
     console.log('✅ Message API Debug - User verified, processing message')
 

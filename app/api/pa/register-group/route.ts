@@ -99,14 +99,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Register the group chat
+    // Get the Telegram user's username for owner tracking
+    const { data: telegramUser, error: userError } = await supabase
+      .from('telegram_users')
+      .select('username')
+      .eq('telegram_id', telegramId)
+      .single()
+
+    // Register the group chat with owner information
     const { data: newGroup, error: insertError } = await supabase
       .from('group_chats')
       .insert({
         user_id: linkedUser.user_id,
         chat_id: chatId,
         chat_title: `Group Chat ${chatId}`, // We'll get the actual title later
-        is_active: true
+        is_active: true,
+        owner_telegram_id: telegramId,
+        owner_username: telegramUser?.username || null
       })
       .select()
       .single()
