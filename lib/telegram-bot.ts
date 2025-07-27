@@ -1163,9 +1163,57 @@ Once registered, you'll be able to add PAs to this group and manage expenses tog
         return
       }
 
+      // Try to get the PA's Telegram ID from their username
+      const { data: paUser, error: paUserError } = await supabase
+        .from('telegram_users')
+        .select('telegram_id, user_id')
+        .eq('username', cleanUsername)
+        .single()
+
+      if (paUserError || !paUser) {
+        await this.bot.sendMessage(
+          chatId,
+          `❌ **Cannot remove PA: @${cleanUsername}**\n\nThe PA was not found in the system.`
+        )
+        return
+      }
+
+      // Check if PA is actually added to this group
+      const { data: existingPA, error: existingPAError } = await supabase
+        .from('personal_assistants')
+        .select('*')
+        .eq('pa_telegram_id', paUser.telegram_id)
+        .eq('user_id', linkedUser.user_id)
+        .eq('is_active', true)
+        .single()
+
+      if (!existingPA) {
+        await this.bot.sendMessage(
+          chatId,
+          `❌ **PA Not Found**\n\n@${cleanUsername} is not a PA in this group.`
+        )
+        return
+      }
+
+      // Remove the PA from the database
+      const { error: removePAError } = await supabase
+        .from('personal_assistants')
+        .delete()
+        .eq('pa_telegram_id', paUser.telegram_id)
+        .eq('user_id', linkedUser.user_id)
+
+      if (removePAError) {
+        console.error('❌ [REMOVE_PA_COMMAND] Error removing PA:', removePAError)
+        await this.bot.sendMessage(
+          chatId,
+          `❌ **Error removing PA**\n\nFailed to remove @${cleanUsername} as a PA. Please try again.`
+        )
+        return
+      }
+
       await this.bot.sendMessage(
         chatId,
-        `🔄 **Removing PA: @${cleanUsername}**\n\nThis feature is coming soon!`
+        `✅ **PA Removed Successfully!**\n\n@${cleanUsername} has been removed as a PA from this group.\n\nThey can no longer:\n• Send receipts and messages in this group\n• Use /web-access to view expenses\n• Help manage expenses for you`
       )
 
     } catch (error: any) {
