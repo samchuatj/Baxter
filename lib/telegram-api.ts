@@ -44,17 +44,16 @@ export async function sendTelegramMessage(chatId: number, message: string, optio
 export async function sendTelegramSuccessMessage(chatId: number, groupTitle?: string): Promise<boolean> {
   const message = `🎉 **Group Registration Successful!**
 
-✅ Your group chat has been successfully registered for PA management.
+✅ Your group has been successfully registered for expense tracking.
 
 ${groupTitle ? `📋 **Group:** ${groupTitle}` : ''}
 
 **What's next?**
-• Add PAs to this group using /add-pa @username
-• PAs can now help manage expenses in this group
-• Use /list-pas to see all PAs in this group
+• Anyone in this group can now send receipts and create expenses for you
+• Use /web-access to get a magic link for viewing expenses
 • Send /help for more commands
 
-💡 **Tip:** PAs can send photos of receipts and I'll automatically extract expense details!`
+💡 **Tip:** Anyone in the group can send photos of receipts and I'll automatically extract expense details!`
 
   return sendTelegramMessage(chatId, message)
 }

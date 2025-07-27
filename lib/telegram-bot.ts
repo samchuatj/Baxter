@@ -421,13 +421,16 @@ Just send a message or a photo of a receipt to get started!`,
         chatId,
         `🔗 **Group Chat Registration**
 
-To register this group chat for PA management, click the link below:
+To register this group for expense tracking, click the link below:
 
 ${registrationLink}
 
 ⚠️ *This link expires in 10 minutes.*
 
-Once registered, you'll be able to add PAs to this group and manage expenses together!`,
+Once registered, anyone in this group can:
+• Send receipts and create expenses for you
+• Use /web-access to view expenses
+• Help manage your expenses together!`,
         { parse_mode: 'Markdown' }
       )
 
