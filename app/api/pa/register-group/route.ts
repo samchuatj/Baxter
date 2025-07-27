@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { sendTelegramSuccessMessage, sendTelegramErrorMessage } from '@/lib/telegram-api'
 
 export async function POST(request: NextRequest) {
   console.log('🔍 [REGISTER_GROUP_API] Starting group registration API request')
@@ -32,6 +33,12 @@ export async function POST(request: NextRequest) {
 
     if (fetchError || !pending) {
       console.log('❌ [REGISTER_GROUP_API] Token not found or expired')
+      // Send error message to Telegram chat
+      try {
+        await sendTelegramErrorMessage(chatId, 'Registration link expired or invalid')
+      } catch (telegramError) {
+        console.error('❌ [REGISTER_GROUP_API] Failed to send Telegram error message:', telegramError)
+      }
       return NextResponse.json(
         { success: false, error: 'expired' },
         { status: 400 }
@@ -119,6 +126,15 @@ export async function POST(request: NextRequest) {
       .eq('token', token)
 
     console.log('✅ [REGISTER_GROUP_API] Group registered successfully:', newGroup)
+
+    // Send success message to Telegram chat
+    try {
+      await sendTelegramSuccessMessage(chatId, newGroup.chat_title)
+      console.log('✅ [REGISTER_GROUP_API] Success message sent to Telegram')
+    } catch (telegramError) {
+      console.error('❌ [REGISTER_GROUP_API] Failed to send Telegram success message:', telegramError)
+      // Don't fail the registration if Telegram message fails
+    }
 
     return NextResponse.json({
       success: true,
